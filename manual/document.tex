@@ -1,0 +1,101 @@
+\documentclass[letterpaper, 10 pt]{report}
+
+
+\def\@makechapterhead#1{%
+	\vspace*{50\p@}%
+	{\parindent \z@ \raggedright \normalfont
+		\ifnum \c@secnumdepth >\m@ne
+		\if@mainmatter
+		%\huge\bfseries \@chapapp\space \thechapter
+		\Huge\bfseries \thechapter.\space%
+		%\par\nobreak
+		%\vskip 20\p@
+		\fi
+		\fi
+		\interlinepenalty\@M
+		\Huge \bfseries #1\par\nobreak
+		\vskip 40\p@
+}}
+
+\usepackage{indentfirst}
+\usepackage{color}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks,
+    linktoc=all,
+    citecolor=black,
+    filecolor=black,
+    linkcolor=black,
+    urlcolor=black
+}
+
+% -------------------------------------------------------------------------------------
+% BEGIN DOCUMENT
+% -------------------------------------------------------------------------------------
+\begin{document}
+\title{CHARMANDER User Manual}
+\author{Laura Pereira de Castro	}
+\maketitle
+\pagestyle{empty}
+
+% -------------------------------------------------------------------------------------
+% TABLE OF CONTENTS
+% -------------------------------------------------------------------------------------
+\tableofcontents
+\newpage
+
+% -------------------------------------------------------------------------------------
+% INTRODUCTION
+% -------------------------------------------------------------------------------------
+\section{Introduction}
+
+Combustion is a highly complex phenomenon which to be fully understood requires a analysis of turbulence, mixing, chemical kinectics and in some cases, even radiation.
+
+To start understanding such a complex process, it's necessary to undersand the basics of turbulence, combustion, mixing, chemical kinectics, reduction mechanisms and radiation. The first chapter will contain a bibliographical revision of these concepts.
+
+Then it's necessary to understand how those concepts become a simulation throught an program, so in the second chapter will be explained the process of simulation.
+
+At last, in the fourth chapter, when the user finally understands the reasoning behind the program, it will be presented the \textbf{CHARMANDER} software interface.
+
+\newpage
+
+% -------------------------------------------------------------------------------------
+% Revisao bibliografica
+% -------------------------------------------------------------------------------------
+\section{Bibliographical Revision}
+\subsection{Turbulence}
+\subsection{Combustion}
+\subsection{Mixing}
+\subsection{Chemical Kinectics}
+\subsection{Reduction Mechanisms}
+\subsection{Radiation}
+\newpage
+
+% -------------------------------------------------------------------------------------
+% Endendendo Simulação
+% -------------------------------------------------------------------------------------
+\section{Understanding Simulation}
+
+\newpage
+
+% -------------------------------------------------------------------------------------
+% Software interface
+% -------------------------------------------------------------------------------------
+\section{\textbf{CHARMANDER} Software}
+
+\newpage
+% -------------------------------------------------------------------------------------
+% REFERENCES
+% -------------------------------------------------------------------------------------
+\bibliography{ref}
+
+\newpage
+% -------------------------------------------------------------------------------------
+% Apendices
+% -------------------------------------------------------------------------------------
+\chapter{Apendix}
+
+% -------------------------------------------------------------------------------------
+% END DOCUMENT
+% -------------------------------------------------------------------------------------
+\end{document}\textsl{}

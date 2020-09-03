@@ -1,6 +1,8 @@
-CTI Files\sp21re.cti
+CTI Files\methane_global.cti
 IEM/LMSE
 0.5 2 0.5
+0.005 0.3
+1 1 1 1 1 
 
  
  Wall 1 
@@ -14,17 +16,11 @@ IEM/LMSE
  W:0
  Wall Reflect:0
  Composition: 
-H2:0.0
+CH4:0.0
 O2:0.0
-O:0.0
-OH:0.0
-H2O:0.0
-H:0.0
-HO2:0.0
-CO:0.0
-CO2:0.0
-HCO:0.0
 N2:0.0
+CO2:0.0
+H2O:0.0
 
  
  Wall 2 
@@ -38,17 +34,11 @@ N2:0.0
  W:0
  Wall Reflect:0
  Composition: 
-H2:0.0
+CH4:0.0
 O2:0.0
-O:0.0
-OH:0.0
-H2O:0.0
-H:0.0
-HO2:0.0
-CO:0.0
-CO2:0.0
-HCO:0.0
 N2:0.0
+CO2:0.0
+H2O:0.0
 
  
  Wall 3 
@@ -62,17 +52,11 @@ N2:0.0
  W:0
  Wall Reflect:0
  Composition: 
-H2:0.0
+CH4:0.0
 O2:0.0
-O:0.0
-OH:0.0
-H2O:0.0
-H:0.0
-HO2:0.0
-CO:0.0
-CO2:0.0
-HCO:0.0
 N2:0.0
+CO2:0.0
+H2O:0.0
 
  
  Wall 4 
@@ -86,17 +70,11 @@ N2:0.0
  W:0
  Wall Reflect:0
  Composition: 
-H2:0.0
+CH4:0.0
 O2:0.0
-O:0.0
-OH:0.0
-H2O:0.0
-H:0.0
-HO2:0.0
-CO:0.0
-CO2:0.0
-HCO:0.0
 N2:0.0
+CO2:0.0
+H2O:0.0
 
  
  Wall 5 
@@ -110,17 +88,11 @@ N2:0.0
  W:0
  Wall Reflect:0
  Composition: 
-H2:0.0
+CH4:0.0
 O2:0.0
-O:0.0
-OH:0.0
-H2O:0.0
-H:0.0
-HO2:0.0
-CO:0.0
-CO2:0.0
-HCO:0.0
 N2:0.0
+CO2:0.0
+H2O:0.0
 
  
  Wall 6 
@@ -134,17 +106,11 @@ N2:0.0
  W:0
  Wall Reflect:0
  Composition: 
-H2:0.0
+CH4:0.0
 O2:0.0
-O:0.0
-OH:0.0
-H2O:0.0
-H:0.0
-HO2:0.0
-CO:0.0
-CO2:0.0
-HCO:0.0
 N2:0.0
+CO2:0.0
+H2O:0.0
 
  
  Wall 7 
@@ -152,23 +118,17 @@ N2:0.0
  
  GenDt:0
  N:500
- T:3000
+ T:1200
  U:0
  V:0
  W:0
  Wall Reflect:0
  Composition: 
-H2:0.0
-O2:0.67
-O:0.0
-OH:0.0
-H2O:0.0
-H:0.0
-HO2:0.0
-CO:0.33
+CH4:0.1
+O2:0.2
+N2:0.7
 CO2:0.0
-HCO:0.0
-N2:0.0
+H2O:0.0
 
  
  Wall 8 
@@ -182,17 +142,11 @@ N2:0.0
  W:0
  Wall Reflect:0
  Composition: 
-H2:0.0
+CH4:0.0
 O2:0.0
-O:0.0
-OH:0.0
-H2O:0.0
-H:0.0
-HO2:0.0
-CO:0.0
-CO2:0.0
-HCO:0.0
 N2:0.0
+CO2:0.0
+H2O:0.0
 
  
  Wall 9 
@@ -206,14 +160,8 @@ N2:0.0
  W:0
  Wall Reflect:0
  Composition: 
-H2:0.0
+CH4:0.0
 O2:0.0
-O:0.0
-OH:0.0
-H2O:0.0
-H:0.0
-HO2:0.0
-CO:0.0
-CO2:0.0
-HCO:0.0
 N2:0.0
+CO2:0.0
+H2O:0.0

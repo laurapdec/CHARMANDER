@@ -1,534 +1,512 @@
-import imageio,random,math,pyglet,subprocess,time
-import matplotlib.pyplot as plt
-import numpy as np
-import cantera as ct
-from tkinter import *
-from tkinter import ttk,filedialog,messagebox
-from PIL import ImageTk,Image
-from mpl_toolkits.mplot3d import Axes3D
-from os import remove
-from numpy.random import random
-from random import randint
-from math import exp
 
 ###############################################################################
-##                         CLASSE INTERFACE GRÁFICA                          ##
+##                            IMPORTANDO MODULOS                             ##
 ###############################################################################
+
+import subprocess 																																												# Abrir o manual externamente
+import platform																																													# Determinar sistema operacional
+import time 																																													# Cronometra o tempo de simulacao
+import numpy as np 																																												# Lida com vetores
+from numpy.random import random 																																								# Geracao de numeros aleatorios
+from random import randint 																																										# Geracao de inteiros aleatorios
+from math import exp 																																											# Funcao exponencial
+import matplotlib.pyplot as plt 																																								# Plotagem dos resultados
+from mpl_toolkits.mplot3d import Axes3D 																																						# Plotagem 3D dos resultados
+import cantera as ct 																																											# Lida com cinética química
+from tkinter import * 																																											# Interface Grafica
+from tkinter import ttk,filedialog,messagebox 																																					# Interface Grafica
+import imageio   																																												# Geracao de GIFS
+from os import remove																																											# Deleta arquivos de imagem utilizados para geração do GIF
+from PIL import ImageTk,Image  																																									# Lida com imagens para o GIF
+
+###############################################################################
+##                         CLASSE INTERFACE GRAFICA                          ##
+###############################################################################
+
 
 class App:
-	def __init__(self,master):
+	def __init__(self,master):																																								## Funcao inicial
+		self.master=master  																																									# Janela principal
 
-		self.master=master
+		self.elements=[] 																																										# Elementos quimicos
+		self.saved=False 																																										# Variavel booleana para evitar que as condições sejam definidas e nao salvas
 
-		self.elements=[]
-		self.saved=False
+		self.style = ttk.Style(master)  																																						# Intentificando o estilo da janela
 
-		self.style = ttk.Style(master)
+		self.style.theme_use('classic') 																																						# Definindo o estilo da janela
 
-		self.style.theme_use('xpnative')
-		menu=Menu(master)
-		menu.add_command(label="Import",command=self.import_)
-		menu.add_command(label="Help",command=self.help)
+		#																																													## Menu superior
 
-		subMenu = Menu(menu, tearoff=False)
-		menu.add_cascade(label='Theme', menu=subMenu) 
-		subMenu.add_command(label="White",command=self.whiteTheme)
-		subMenu.add_command(label="Dark",command=self.darkTheme)
-		master.config(menu=menu)
+		menu=Menu(master)   																																									# Criacao de um menu superior na janela
+		menu.add_command(label="Import",command=self.import_)																																	# Funcao Import no menu para importar um caso
+		menu.add_command(label="Help",command=self.help) 																																		# Funcao de ajuda que redireciona ao manual do CHARMANDER
+		subMenu = Menu(menu, tearoff=False)																																						# Criacao de um submenu no menu superior
+		menu.add_cascade(label='Theme', menu=subMenu) 																																			# Criacao da cascata no botao "Tema" do menu
+		subMenu.add_command(label="White",command=self.whiteTheme)  																															# Sub opcao de tema claro
+		subMenu.add_command(label="Dark",command=self.darkTheme) 																																# Sub opcao de tema escuro
+		master.config(menu=menu)																																								# Adicionando o menu a janela
 
-		
+		#																																													## Mecanismo de cinetica
 
-
-
-		CTIlabel = ttk.Labelframe(master, text='Select the .CTI file')
-		self.CTIvar = StringVar()
-		CTIcombo = ttk.Combobox(CTIlabel,state="readonly", textvariable=self.CTIvar ,values=["GRI Mech 3.0", "SP21RE","CH4 Global","Local file"])
-		
-		CTIcombo.grid(pady=5, padx=10)
-		CTIlabel.grid(row=0, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)       
-
-		CTIcombo.bind('<<ComboboxSelected>>', self.checkCTI)
+		CTIlabel = ttk.Labelframe(master, text='Select the .CTI file')  																														# Subjanela CTIlabel 
+		self.CTIvar = StringVar()																																								# String dinamica CTIvar que armazena a informação escrita de qual mecanismo de cinetica sera usado
+		CTIcombo = ttk.Combobox(CTIlabel,state="readonly", textvariable=self.CTIvar ,values=["GRI Mech 3.0", "SP21RE","CH4 Global","Kazakov","Local file"]) 									# Menu de escolhas CTIcombo para determinar o arquivo .cti
+		CTIcombo.grid(pady=5, padx=10) 																																							# Alocacao da menu CTIcombo na subjanela CTIlabel
+		CTIlabel.grid(row=0, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)																														# Alocacao da subjanela CTIlabel na janela principal
+		CTIcombo.bind('<<ComboboxSelected>>', self.checkCTI) 																																	# Associa a escolha de uma CTI com a ativacao da funcao checkCTI
 	
+		#																																													## Modelo de micromistura
 
+		MODELlabel = ttk.Labelframe(master, text='Select the mixing model')																														# Subjanela MODELlabel
+		self.MODELvar = StringVar()																																								# String dinamica MODELvar que armazena a informação escrita de qual modelo de micromistura sera usado
+		MODELcombo = ttk.Combobox(MODELlabel,state="readonly", textvariable=self.MODELvar ,values=["Curl","Curl Modificado","IEM/LMSE", "EIEM","Langevin","Langevin Estendido"]) 				# Menu de escolhas MODELcombo para determinar o modelo
+		self.MODELvar.set("IEM/LMSE") 																																							# Determina o modelo padrao como IEM/LMSE
+		MODELcombo.grid(pady=5, padx=10)																																						# Alocacao da menu MODELcombo na subjanela MODELlabel
+		MODELlabel.grid(row=1,column=0, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)  																											# Alocacao da subjanela MODELlabel na janela principal
+		MODELcombo.bind('<<ComboboxSelected>>', self.checkMODEL)     																															# Associa a escolha de um modelo com a ativacao da funcao checkMODEL
 
-		## Mixture Model
+		#																																													## Parametros
 
-		MODELlabel = ttk.Labelframe(master, text='Select the mixing model')
-		self.MODELvar = StringVar()
-		MODELcombo = ttk.Combobox(MODELlabel,state="readonly", textvariable=self.MODELvar ,values=["Curl","Curl Modificado","IEM/LMSE", "EIEM","Langevin","Langevin Estendido"])
-		self.MODELvar.set("IEM/LMSE")
-		MODELcombo.grid(pady=5, padx=10)
-		MODELlabel.grid(row=1,column=0, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)  
+		ParamLabel = ttk.Labelframe(master, text='Parameters')																																	# Subjanela ParamLabel
+		ParamLabel.grid(row=0,column=1,rowspan=2, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 																								# Alocacao da subjanela ParamLabel na janela principal	
 
-		MODELcombo.bind('<<ComboboxSelected>>', self.checkMODEL)     
-
-		## Parameters
-
-		ParamLabel = ttk.Labelframe(master, text='Parameters')
-		ParamLabel.grid(row=0,column=1,rowspan=2, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)  
+		Label(master,text="\u03b1:").grid(in_=ParamLabel,row=0, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 																					# Texto '\alpha' alocado na subjanela ParamLabel
+		self.Alphastring=StringVar() 																																							# String dinamica Alphastring que armazena a informacao escrita de qual alpha sera usado
+		self.Alphastring.set(0.5) 																																								# Determina alpha padrao de 0.5
+		self.entryAlpha=Entry(master,textvariable=self.Alphastring,state='disabled') 																											# Input da variavel alpha
+		self.entryAlpha.grid(in_=ParamLabel,row=0, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 																						# Alocacao do input na subjanela ParamLabel
 		
+		Label(master,text="C\u03c9 :").grid(in_=ParamLabel,row=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)																					# Texto Cw alocado na subjanela ParamLabel
+		self.Cwstring=StringVar() 																																								# String dinamica Cwstring que armazena a informacao escrita de qual Cw sera usado
+		self.Cwstring.set(2) 																																									# Determina Cw padrao de 2
+		self.entryCw=Entry(master,textvariable=self.Cwstring,state='disabled') 																													# Input da variavel Cw
+		self.entryCw.grid(in_=ParamLabel,row=1, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)  																						# Alocacao do input na subjanela ParamLabel
+
+		Label(master,text="d0 :").grid(in_=ParamLabel,row=2, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)																						# Texto Cw alocado na subjanela ParamLabel
+		self.D0string=StringVar() 																																								# String dinamica D0string que armazena a informacao escrita de qual D0 sera usado
+		self.D0string.set(0.5) 																																									# Determina D0 padrao de 0.5
+		self.entryD0=Entry(master,textvariable=self.D0string,state='disabled') 																													# Input da variavel D0
+		self.entryD0.grid(in_=ParamLabel,row=2, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)  																						# Alocacao do input na subjanela ParamLabel
+
+		self.Param=[self.Alphastring,self.Cwstring,self.D0string] 																																# Vetor com as variaveis definidas na subjanela ParamLabel [alpha,Cw,D0]
+
+		#																																													## Simulation time parameters
+
+		TimeLabel = ttk.Labelframe(master, text='Time settings')																																# Subjanela TimeLabel
+		TimeLabel.grid(row=0,column=2,rowspan=2,sticky='W', padx=5, pady=5, ipadx=5, ipady=5)   																								# Alocacao da subjanela TimeLabel na janela principal	
 		
-		Label(master,text="\u03b1:").grid(in_=ParamLabel,row=0, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
-		self.Alphastring=StringVar()
-		self.Alphastring.set(0.5)
-		self.entryAlpha=Entry(master,textvariable=self.Alphastring,state='disabled')
-		self.entryAlpha.grid(in_=ParamLabel,row=0, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+		Label(master,text="t_f [s] :").grid(in_=TimeLabel,row=0, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 																					# Texto 't_f[s]' alocado na subjanela TimeLabel
+		self.TFstring=StringVar()																																								# String dinamica TFstring que armazena a informacao de qual tempo final sera usado
+		self.TFstring.set(0.01)																																									# Determina t_f padrao de 0.01
+		self.entryTF=Entry(master,textvariable=self.TFstring) 																																	# Input da variavel t_f
+		self.entryTF.grid(in_=TimeLabel,row=0, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 																							# Alocacao do input na subjanela TimeLabel
 		
-		Label(master,text="C\u03c9 :").grid(in_=ParamLabel,row=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
-		self.Cwstring=StringVar()
-		self.Cwstring.set(2)
-		self.entryCw=Entry(master,textvariable=self.Cwstring,state='disabled')
-		self.entryCw.grid(in_=ParamLabel,row=1, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
+		Label(master,text="dt [s] :").grid(in_=TimeLabel,row=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)																					# Texto 'dt [s]' alocado na subjanela TimeLabel
+		self.DTstring=StringVar()																																								# String dinamica DTstring que armazena a informacao de qual passo de tempo sera usado
+		self.DTstring.set(0.001)																																								# Determina dt padrao de 0.001
+		self.entryDT=Entry(master,textvariable=self.DTstring)																																	# Input da variavel dt
+		self.entryDT.grid(in_=TimeLabel,row=1, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 																							# Alocacao do input na subjanela TimeLabel
 
-		Label(master,text="d0 :").grid(in_=ParamLabel,row=2, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
-		self.D0string=StringVar()
-		self.D0string.set(0.5)
-		self.entryD0=Entry(master,textvariable=self.D0string,state='disabled')
-		self.entryD0.grid(in_=ParamLabel,row=2, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
-
-		self.Param=[self.Alphastring,self.Cwstring,self.D0string]
-		## Simulation time parameters
-
-		TimeLabel = ttk.Labelframe(master, text='Time settings')
-		TimeLabel.grid(row=0,column=2,rowspan=2,sticky='W', padx=5, pady=5, ipadx=5, ipady=5)  
+		#																																													## Boundary Conditions
 		
-		
-		Label(master,text="t_f [s] :").grid(in_=TimeLabel,row=0, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
-		self.TFstring=StringVar()
-		self.TFstring.set(0.01)
-		self.entryTF=Entry(master,textvariable=self.TFstring)
-		self.entryTF.grid(in_=TimeLabel,row=0, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
-		
-		Label(master,text="dt [s] :").grid(in_=TimeLabel,row=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
-		self.DTstring=StringVar()
-		self.DTstring.set(0.001)
-		self.entryDT=Entry(master,textvariable=self.DTstring)
-		self.entryDT.grid(in_=TimeLabel,row=1, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
+		Boundlabel = ttk.Labelframe(master, text='Boundary Conditions')																															# Subjanela BoundLabel
+		Boundlabel.grid(sticky=E+W,row=2,columnspan=4,rowspan=3,padx=5, pady=5, ipadx=5, ipady=5) 																								# Alocacao da subjanela BoundLabel na janela principal	
 
+		#																																													## Setting Composition
 
-		
-
-
-		## Boundary Conditions
-		
-		
-		Boundlabel = ttk.Labelframe(master, text='Boundary Conditions')
-		Boundlabel.grid(sticky=E+W,row=2,columnspan=4,rowspan=3,padx=5, pady=5, ipadx=5, ipady=5)
-
-
-		# Setting Composition
-
-
-		BigFrame=Frame(Boundlabel)
-
-		BigFrame.grid(column=3,row=0,sticky=W+N,rowspan=30)
-
-		self.canvas = Canvas(self.master, width=200, height=500,bd=0,highlightthickness=0, relief='ridge')
-		self.CompositionLabel = ttk.Labelframe(self.canvas, text='Compositions')
-		sbar = Scrollbar(self.master, orient="vertical", command=self.canvas.yview)
-		
-		self.canvas.config(yscrollcommand=sbar.set)
-
-		self.canvas.pack(in_=BigFrame,side="left")
-		sbar.pack(in_=BigFrame,side="left", fill="y")
-		self.canvas.create_window((2,2), window=self.CompositionLabel, anchor="nw",  tags="self.CompositionLabel")        
-		
-		self.CompositionLabel.bind("<Configure>", self.onFrameConfigure)
-		
-
-		
+		BigFrame=Frame(Boundlabel) 																																								# Criacao de um quadro 'BigFrame' dentro da subjanela BoundLabel
+		BigFrame.grid(column=3,row=0,sticky=W+N,rowspan=30) 																																	# Alocacao do quadro 'BigFrame' na subjanela BoundLabel
+		self.canvas = Canvas(self.master, width=200, height=500,bd=0,highlightthickness=0, relief='ridge')																						# Criacao de um canvas dentro da janela principal
+		self.CompositionLabel = ttk.Labelframe(self.canvas, text='Compositions') 																												# Subjanela CompositionLabel dentro do canvas
+		sbar = Scrollbar(self.master, orient="vertical", command=self.canvas.yview) 																											# Barra de scroll vertical dentro do canvas
+		self.canvas.config(yscrollcommand=sbar.set) 																																			# Associa a barra de scroll com o scroll em si
+		self.canvas.pack(in_=BigFrame,side="left") 																																				# Alocacao do canvas no quadro BigFrame
+		sbar.pack(in_=BigFrame,side="left", fill="y") 																																			# Alocacao da barra de scroll no canvas
+		self.canvas.create_window((2,2), window=self.CompositionLabel, anchor="nw",  tags="self.CompositionLabel")																				# Associacao entre a subjanela CompositionLabel e o canvas        
+		self.CompositionLabel.bind("<Configure>", self.onFrameConfigure)																														# Torna a subjanela CompositionLabel reativa pela funcao onFrameConfigure
 				
-		# Select Wall
+		#																																													## Select Wall
 
-		Label(master,text="Select the wall :").grid(in_=Boundlabel,row=0,column=0 ,sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
-		self.Boundvar = StringVar()
-		Boundcombo = ttk.Combobox(Boundlabel,state="readonly", textvariable=self.Boundvar ,values=["LEFT", "RIGHT", "FRONT", "BACK", "UP", "DOWN","fill","Half 1","Half 2"])
-		Boundcombo.grid(row=0,column=1,pady=5, padx=10)
+		Label(master,text="Select the wall :").grid(in_=Boundlabel,row=0,column=0 ,sticky='W', padx=5, pady=5, ipadx=5, ipady=5)																# Texto 'Select the wall :' na subjanela Boundlabel
+		self.Boundvar = StringVar()																																								# String dinamica que armazena a informacao de qual superficie de contorno esta sendo definida	
+		self.Boundvar.set("LEFT")																																								# Determina Boundvar padrao 'LEFT'
+		Boundcombo = ttk.Combobox(Boundlabel,state="readonly", textvariable=self.Boundvar ,values=["LEFT", "RIGHT", "FRONT", "BACK", "UP", "DOWN","fill","Half 1","Half 2"])					# Menu de escolhas BoundCombo para determinar a superficie de contorno
+		Boundcombo.grid(row=0,column=1,pady=5, padx=10)																																			# Alocacao da subjanela Boundcombo na janela principal
+		Boundcombo.bind('<<ComboboxSelected>>', self.newWall)																																	# Associa a escolha de uma superficie de contorno com a funcao newWall
 
-		self.Boundvar.set("LEFT")
+		#																																													## Image of wall
+
+		self.ImgPath = StringVar()																																								# String dinamica que armazena o caminho para a imagem ilustrativa da superficie de contorno
+		self.ImgPath.set( "wall/LEFT.png")																																						# Determina ImgPath padrao como 'wall/LEFT.png'
+		self.WallImg = ImageTk.PhotoImage(Image.open(self.ImgPath.get()))																														# Gera a imagem ilustrativa 
+		self.Imglabel = Label(image=self.WallImg)																																				# Criacao de um ambiente Imglabel com a imagem
+		self.Imglabel.img = self.WallImg  																																						# Finalizacao da definicao o ambiente
+		self.Imglabel.grid(in_=Boundlabel,row=0,column=2) 																																		# Alocacao do Imglabel na sub janela Boundlabel
+
+		#																																													## Create particles here?
 		
-		Boundcombo.bind('<<ComboboxSelected>>', self.newWall)
+		self.createPart = IntVar()																																								# Inteiro dinamico que armazena informacao booleana sobre a criacao de particulas na superficie em questao
+		self.checkIn=Checkbutton(master, text="Generate particles in this Surface?",variable=self.createPart,command=self.checkenable) 															# Botao de check com o texto 'Generate particles in this Surface?'
+		self.checkIn.grid(in_=Boundlabel,sticky=W,row=1,columnspan=3)																															# Alocacao do botao na sub janela Boundlabel
 
-		#Image of wall
-
-		self.ImgPath = StringVar()
-		self.ImgPath.set( "wall/LEFT.png")
-		self.WallImg = ImageTk.PhotoImage(Image.open(self.ImgPath.get()))
-
-		self.Imglabel = Label(image=self.WallImg)
-		self.Imglabel.img = self.WallImg # this line need to prevent gc
-		self.Imglabel.grid(in_=Boundlabel,row=0,column=2)
-
-		# Create particles here?
+		#																																													## Create particles here later?
 		
-		
-		self.createPart = IntVar()
-		self.checkIn=Checkbutton(master, text="Generate particles in this Wall?",variable=self.createPart,command=self.checkenable)
-		self.checkIn.grid(in_=Boundlabel,sticky=W,row=1,columnspan=3)
+		self.createPartT = IntVar()																																								# Inteiro dinamico que armazena informacao booleana sobre a criacao de particulas com o decorrer do tempo na superficie em questao
+		self.checkInT=Checkbutton(master, text="Generate particles in this Surface every time step?",variable=self.createPartT,state='disabled') 												# Botao de check com o texto 'Generate particles in this Surface every time step?'
+		self.checkInT.grid(in_=Boundlabel,sticky=W,row=2,columnspan=3)																															# Alocacao do botao na sub janela Boundlabel
 
+		#																																													## Setting Number of Particles
+		
+		Label(master,text="Number of particles generated by time step :").grid(in_=Boundlabel,row=3 ,columnspan=2,sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 								# Texto 'Number of particles generated by time step :' alocado na sub janela Boundlabel
+		self.Nstring=StringVar() 																																								# String dinamica que armazena o numero de particulas a serem geradas por passo de tempo
+		self.entryN=Entry(master,textvariable=self.Nstring,state='disabled')																													# Input do numero de particulas
+		self.Nstring.set(0) 																																									# Determina Nstring padrao como 0
+		self.entryN.grid(in_=Boundlabel,row=3, column=2, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)																							# Alocacao do input na sub janela Boundlabel
+		
+		#																																													## Setting Temperature
+		
+		Label(master,text="T [K] :").grid(in_=Boundlabel,row=4 ,columnspan=2,sticky='W', padx=5, pady=5, ipadx=5, ipady=5)  																	# Texto 'T [K]:' alocado na sub janela Boundlabel
+		self.Tstring=StringVar()																																								# String dinamica que armazena a informacao da temperatura
+		self.entryT=Entry(master,textvariable=self.Tstring,state='disabled') 																													# Input da temperatura
+		self.entryT.grid(in_=Boundlabel,row=4, column=2, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)																							# Alocacao do input na sub janela Boundlabel
 
-		# Create particles here later?
-		
-		
-		self.createPartT = IntVar()
-		self.checkInT=Checkbutton(master, text="Generate particles in this Wall every time step?",variable=self.createPartT,state='disabled')
-		self.checkInT.grid(in_=Boundlabel,sticky=W,row=2,columnspan=3)
+		#																																													## Setting Velocities
 
-		# Setting Number of Particles
+		VelocityLabel = ttk.Labelframe(Boundlabel, text='Velocities')																															# Subjanela VelocityLabel
+		VelocityLabel.grid(sticky=E+W,row=5,padx=5, pady=5, ipadx=5, ipady=5,columnspan=3)																										# Alocacao da sub janela VelocityLabel na janela principal
 		
-		Label(master,text="Number of particles generated by time step :").grid(in_=Boundlabel,row=3 ,columnspan=2,sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
-		self.Nstring=StringVar()
-		self.entryN=Entry(master,textvariable=self.Nstring,state='disabled')
-		self.Nstring.set(0)
-		self.entryN.grid(in_=Boundlabel,row=3, column=2, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+		Label(master,text="u [m/s] :").grid(in_=VelocityLabel,row=3, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)																				# Texto 'u [m/s]' alocado na sub janela VelocityLabel
+		self.Ustring=StringVar()																																								# String dinamica que armazena a velocidade no eixo x
+		self.Ustring.set(0)																																										# Determina Ustring padrao como 0
+		self.entryU=Entry(master,textvariable=self.Ustring,state='disabled')																													# Input da velocidade no eixo x
+		self.entryU.grid(in_=VelocityLabel,row=3, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)																						# Alocacao do input na sub janela VelocityLabel
 		
-		# Setting Temperature
-		
-		Label(master,text="T [K] :").grid(in_=Boundlabel,row=4 ,columnspan=2,sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
-		self.Tstring=StringVar()
-		self.entryT=Entry(master,textvariable=self.Tstring,state='disabled')
-		self.entryT.grid(in_=Boundlabel,row=4, column=2, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+		Label(master,text="v [m/s] :").grid(in_=VelocityLabel,row=4, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)																				# Texto 'v [m/s]' alocado na sub janela VelocityLabel
+		self.Vstring=StringVar()																																								# String dinamica que armazena a velocidade no eixo y
+		self.Vstring.set(0)																																										# Determina Vstring padrao como 0
+		self.entryV=Entry(master,textvariable=self.Vstring,state='disabled')																													# Input da velocidade no eixo y
+		self.entryV.grid(in_=VelocityLabel,row=4, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 																						# Alocacao do input na sub janela VelocityLabel
 
+		Label(master,text="w [m/s] :").grid(in_=VelocityLabel,row=5, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)																				# Texto 'w [m/s]' alocado na sub janela VelocityLabel
+		self.Wstring=StringVar()																																								# String dinamica que armazena a velocidade no eixo z
+		self.Wstring.set(0)																																										# Determina Wstring padrao como 0
+		self.entryW=Entry(master,textvariable=self.Wstring,state='disabled')																													# Input da velocidade no eixo z
+		self.entryW.grid(in_=VelocityLabel,row=5, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 																						# Alocacao do input na sub janela VelocityLabel
 
+		#																																													## Wall Reflect or Pass
 		
+		self.WallReflect = IntVar() 																																							# Inteiro dinamico que armazena informacao booleana sobre se a parede deve ter fluxo=0 na superficie em questao
+		Checkbutton(master, text="Reflects?", variable=self.WallReflect).grid(in_=Boundlabel,row=6, sticky=W,columnspan=3)																		# Botao de check com o texto 'Reflects?' alocado na sub janela Boundlabel
+
+		#																																													## Save Wall
 		
-		# Setting Velocities
-
-		VelocityLabel = ttk.Labelframe(Boundlabel, text='Velocities')
-		VelocityLabel.grid(sticky=E+W,row=5,padx=5, pady=5, ipadx=5, ipady=5,columnspan=3)
-		
-		
-		Label(master,text="u [m/s] :").grid(in_=VelocityLabel,row=3, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
-		self.Ustring=StringVar()
-		self.Ustring.set(0)
-		self.entryU=Entry(master,textvariable=self.Ustring,state='disabled')
-		self.entryU.grid(in_=VelocityLabel,row=3, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
-		
-		Label(master,text="v [m/s] :").grid(in_=VelocityLabel,row=4, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
-		self.Vstring=StringVar()
-		self.Vstring.set(0)
-		self.entryV=Entry(master,textvariable=self.Vstring,state='disabled')
-		self.entryV.grid(in_=VelocityLabel,row=4, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
-
-		Label(master,text="w [m/s] :").grid(in_=VelocityLabel,row=5, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
-		self.Wstring=StringVar()
-		self.Wstring.set(0)
-		self.entryW=Entry(master,textvariable=self.Wstring,state='disabled')
-		self.entryW.grid(in_=VelocityLabel,row=5, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
-
-
-
-
-		# Wall Reflect or Pass
-		
-		self.WallReflect = IntVar()
-		Checkbutton(master, text="Reflects?", variable=self.WallReflect).grid(in_=Boundlabel,row=6, sticky=W,columnspan=3)
-
-		# Save Wall
-		
-		self.save=Button(Boundlabel,text="Save Wall",command=self.saveWall)
-		self.save.grid(row=7, columnspan=2, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
+		self.save=Button(Boundlabel,text="Save Surface",command=self.saveWall)																													# Botao com o texto 'Save Surface'
+		self.save.grid(row=7, columnspan=2, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)																										# Alocacao do botao na janela principal
 	
+		#																																													## Plot Configure
 
-		## Plot Configure
+		#																																														# to be done
 
-		## Run
+		#																																													## Run
 
-		self.run=Button(master,text="Run",command=self.running)
-		self.run.grid(row=1, column=5 , sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
+		self.run=Button(master,text="Run",command=self.running)																																	# Botao com o texto 'Run'
+		self.run.grid(row=1, column=5 , sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 																											# Alocacao do botao na janela principal
 
-
-		## Prompt
-
+		#																																													## Prompt
 		
-		self.fontsize=11
+		self.fontsize=11																																										# Determina o tamanho da fonte no LOG Console
+		PromptFrame=Frame(master)																																								# Criacao de um quadro na janela principal
+		PromptFrame.grid(row=2,column=4,sticky='W', padx=5, pady=5)																																# Alocacao do quadro na janela principal
+		Label( PromptFrame,text='LOG Console',bg='white',font=('freemono', 11, 'italic'),bd=1,highlightthickness=2, relief='ridge').grid(row=0,columnspan=2,sticky="ew") 						# Texto 'LOG Console' alocado na janela principal
+		bar_prompt = Scrollbar(PromptFrame, orient="vertical")																																	# Barra de scroll vertical dentro do canvas
+		self.prompt=Canvas(PromptFrame,width=500, height=500,bg='black',bd=0,highlightthickness=2, relief='ridge',yscrollcommand=bar_prompt.set) 												# Criacao de um canvas no quadro PromptFrame
+		bar_prompt.config(command=self.prompt.yview)																																			# Associa a barra de scroll com o scroll em si
+		self.prompt.config(scrollregion=self.prompt.bbox('all'))																																# Torna o canvas responsivo
+		bar_prompt.grid(row=1,column=1,sticky="ns")																																				# Alocacao da barra de scroll no canvas
+		self.prompt.grid(row=1,column=0)																																						# Alocacao do canvas na sub janela PromptFrame
 
-		PromptFrame=Frame(master)
-		PromptFrame.grid(row=2,column=4,sticky='W', padx=5, pady=5)
-		Label( PromptFrame,text='LOG Console',bg='white',font=('freemono', 11, 'italic'),bd=1,highlightthickness=2, relief='ridge').grid(row=0,columnspan=2,sticky="ew")
-		
-		bar_prompt = Scrollbar(PromptFrame, orient="vertical")
-		self.prompt=Canvas(PromptFrame,width=500, height=500,bg='black',bd=0,highlightthickness=2, relief='ridge',yscrollcommand=bar_prompt.set)
+		#																																													## Plot parameters
 
-		bar_prompt.config(command=self.prompt.yview)
+		PlotFrame=Frame(self.master,bg='')																																						# Criacao de um quadro na janela principal
+		PlotFrame.grid(row=0,column=4,rowspan=2,sticky='W', padx=5, pady=5, ipadx=5, ipady=5)																									# Alocacao do quadro na janela principal
+		self.plotcanvas = Canvas(self.master, width=300, height=125,bd=0,highlightthickness=0, relief='ridge')																					# Criacao de um canvas na janela principal
+		self.PlotLabel = ttk.Labelframe(self.plotcanvas, text='Plot settings')																													# Sub janela Labelframe no canvas
+		plot_bar = Scrollbar(self.master, orient="horizontal", command=self.plotcanvas.xview)																									# Barra de scroll horizontal dentro do canvas
+		self.plotcanvas.config(xscrollcommand=plot_bar.set)																																		# Associa a barra de scroll com o scroll em si
+		self.plotcanvas.pack(in_=PlotFrame,side="top")																																			# Alocacao do canvas no quadro PlotFrame 
+		plot_bar.pack(in_=PlotFrame,side="top", fill="x")																																		# Alocacao da barra de scroll no quadro PlotFrame
+		self.plotcanvas.create_window((2,2), window=self.PlotLabel, anchor="nw",  tags="self.PlotLabel")        																				# Associacao entre o quadro PlotLabel e o canvas  
+		self.PlotLabel.bind("<Configure>", self.onFrameConfigurePlot)																															# Torna o quadro PlotLabel reativa pela funcao onFrameConfigurePlot
 
-		self.prompt.config(scrollregion=self.prompt.bbox('all'))
+		#																																													## Default White Theme
+		self.whiteTheme()																																										# Define o tema claro como padrao
 
-		bar_prompt.grid(row=1,column=1,sticky="ns")
-		self.prompt.grid(row=1,column=0)
-
-
-		## Plot parameters
-
-
-		PlotFrame=Frame(self.master,bg='')
-
-		PlotFrame.grid(row=0,column=4,rowspan=2,sticky='W', padx=5, pady=5, ipadx=5, ipady=5)  
-
-		self.plotcanvas = Canvas(self.master, width=300, height=125,bd=0,highlightthickness=0, relief='ridge')
-		self.PlotLabel = ttk.Labelframe(self.plotcanvas, text='Plot settings')
-		plot_bar = Scrollbar(self.master, orient="horizontal", command=self.plotcanvas.xview)
-		
-		self.plotcanvas.config(xscrollcommand=plot_bar.set)
-
-		self.plotcanvas.pack(in_=PlotFrame,side="top")
-		plot_bar.pack(in_=PlotFrame,side="top", fill="x")
-		self.plotcanvas.create_window((2,2), window=self.PlotLabel, anchor="nw",  tags="self.PlotLabel")        
-		
-		self.PlotLabel.bind("<Configure>", self.onFrameConfigurePlot)
-		
-
-
-		## Burning MODEL
-
-		Burnlabel = ttk.Labelframe(master, text='Select the reaction model')
-		self.Burnvar = StringVar()
-		self.Burnvar.set("Cantera")
-		Burncombo = ttk.Combobox(Burnlabel,state="readonly", textvariable=self.Burnvar ,values=["Cantera","Don't burn"])
-		
-		Burncombo.grid(pady=5, padx=10)
-		Burnlabel.grid(row=0, column=5,sticky='W', padx=5, pady=5, ipadx=5, ipady=5)       
-
-		
-		
-		## Default White Theme
-		self.whiteTheme()
-
-	def promptPrint(self,message,cont=False):
-		global used
-		start=10
-		height=(self.fontsize+10) * used + 10
-		if cont:
-			start+=30
+	def promptPrint(self,message,cont=False):																																				## Funcao para imprimir informacoes no LOG Console
+		global used 																																											# Contador da quantidade de linhas usadas no LOG Console
+		start=10																																												# Espacamento inicial
+		height=(self.fontsize+10) * used + 10 																																					# Altura na qual o texto deve ser colocado  (tamanho da fonte + 10 ) x numero de linhas usadas + 10 
+		if cont:																																												# Booleano para continuar textos que precisam de mais de uma linha
+			start+=30												
 			height-=5
 
-		used+=1
-		a=self.prompt.create_text((start,height),anchor="w",text=message,fill='green',font=('freemono', self.fontsize))
-		x1,y1,x2,y2=self.prompt.bbox(a)
+		a=self.prompt.create_text((start,height),anchor="w",text=message,fill='green',font=('freemono', self.fontsize))																			# Adiciona-se o texto ao canvas
+		used+=1																																													# Mais uma linha usada no LOG Console
 
+		x1,y1,x2,y2=self.prompt.bbox(a) 																																						# Calcula as coordenadas do LOG Console com o texto inteiro
+		if (x2-x1) >480: 																																										# Se a largura dele for maior que 480
+			n=int(480*len(message)/(x2-x1))																																						# Calcula até qual caractere deve ser mostrado na primeira linha
+			self.prompt.itemconfigure(a,text=message[:n])																																		# Altera o texto para mostrar até o caractere n
+			self.promptPrint(message[n:],True)																																					# Cria um novo texto com o resto do texto e a variavel booleana cont=True
 
-		if (x2-x1) >480:
-			n=int(480*len(message)/(x2-x1))
-			self.prompt.itemconfigure(a,text=message[:n])
-			self.promptPrint(message[n:],True)
+		bound=[self.prompt.bbox('all')[0],self.prompt.bbox('all')[1],self.prompt.bbox('all')[2],self.prompt.bbox('all')[3]+200]																	# Calcula as coordenadas do LOG Console com o texto
+		self.prompt.config(scrollregion=bound)																																					# Atualiza as dimensoes do canvas com as coordenadas do LOG Console com o texto inteiro
 
-		bound=[self.prompt.bbox('all')[0],self.prompt.bbox('all')[1],self.prompt.bbox('all')[2],self.prompt.bbox('all')[3]+200]
+	def whiteTheme(self):																																									## Funcao para alterar para o tema claro
+		self.color="white" 																																										# Altera a cor do fundo para branco
+		self.textcolor="black" 																																									# Altera a cor do texto para preto
+		self.updateTheme() 																																										# Atualiza o tema
 
-		self.prompt.config(scrollregion=bound)
+	def darkTheme(self):																																									## Funcao para alterar para o tema claro
+		self.color="#5b5b5b"																																									# Altera a cor do fundo para cinza
+		self.textcolor='white'																																									# Altera a cor do texto para branco
+		self.updateTheme()																																										# Atualiza o tema
 
-	def whiteTheme(self):
-		self.color="white"
-		self.textcolor="black"
-		self.updateTheme()
+	def updateTheme(self):																																									## Funcao para atualizar o tema
+		self.master.configure(bg=self.color)																																					# Atualiza a cor de fundo da janela principal
+		self.style.configure('TFrame',bg=self.color)																																			# Atualiza a cor de fundo da sub janela TFrame
+		self.style.configure('TLabelframe', background=self.color)																																# Atualiza a cor de fundo da sub janela TLabelframe
+		self.style.configure('TLabelframe.Label', background=self.color,foreground=self.textcolor)																								# Atualiza a cor de fundo e de texto da TLabelframe.Label
+		self.style.configure('TLabel', background=self.color,foreground=self.textcolor)																											# Atualiza a cor de fundo e de texto da TLabel
+		for wid in self.master.winfo_children()+self.CompositionLabel.winfo_children()+self.PlotLabel.winfo_children(): 																		# Para todos os conteudos das sub janelas CompositionLabel e PlotLabel
+			if type(wid)==Label  :																																								# Se for do tipo label
+				wid.configure(bg=self.color,foreground=self.textcolor) 																															# Atualiza a cor de fundo e de texto
+			elif type(wid)==Canvas or type(wid)==Checkbutton:																																	# Se for do tipo canvas ou checkbutton
+				wid.configure(bg=self.color)																																					# Atualiza a cor de fundo
 
-	def darkTheme(self):
-		self.color="#5b5b5b"
-		self.textcolor='white'
-		self.updateTheme()
+	def newWall(self,event=None): 																																							## Funcao para resetar os parametros das superficies de contorno
+		if not self.saved :																																										# Se a superficie anteior nao foi salva aind
+			if messagebox.askokcancel("Warning", "Wish to save unsaved surface?"):																												# Caixa de aviso com o texto '"Warning, Wish to save unsaved surface?'
+				self.saveWall()																																									# Se confirmado a superficie anterior é salva
 
-	def updateTheme(self):
-		self.master.configure(bg=self.color)
-		self.style.configure('TFrame',bg=self.color)
-		self.style.configure('TLabelframe', background=self.color)
-		self.style.configure('TLabelframe.Label', background=self.color,foreground=self.textcolor)
-		self.style.configure('TLabel', background=self.color,foreground=self.textcolor)
-		for wid in self.master.winfo_children()+self.CompositionLabel.winfo_children()+self.PlotLabel.winfo_children():
-			if type(wid)==Label  :
-				wid.configure(bg=self.color,foreground=self.textcolor)
-			elif type(wid)==Canvas or type(wid)==Checkbutton:
-				wid.configure(bg=self.color)
+		self.saved=False																																										# Define que a nova superficie ainda nao foi salva
+		stri="wall/"+self.Boundvar.get()+".png"																																					# Caminho para a imagem ilustrativa da nova superficie
+		self.ImgPath.set(stri)																																									# Atualiza o caminho
+		photo=ImageTk.PhotoImage(Image.open(self.ImgPath.get())) 																																# Atualiza a imagem 1
+		self.Imglabel.configure(image= photo) 																																					# Atualiza a imagem 2
+		self.Imglabel.image=photo 																																								# Atualiza a imagem 3
 
-	def newWall(self,event=None):
+		self.createPart.set(0) 																																									# createPart é definido como o valor padrao 0
+		self.createPartT.set(0) 																																								# createPartT é definido como o valor padrao 0
+		self.checkenable() 																																										# desabilita-se todos os checks pela funcao checkenable
+		self.Nstring.set(0) 																																									# Nstring é definido como o valor padrao 0
+		self.Ustring.set(0) 																																									# Ustring é definido como o valor padrao 0
+		self.Vstring.set(0) 																																									# Vstring é definido como o valor padrao 0
+		self.Wstring.set(0) 																																									# Wstring é definido como o valor padrao 0
+		self.WallReflect.set(0) 																																								# WallReflect é definido como o valor padrao 0
+		for id, field in enumerate(self.elements):																																				# Para todos os elementos
+			self.stringComposition[id].set(0) 																																					# a composição é definida como o valor padrao 0
 
-		if not self.saved :
-			if messagebox.askokcancel("Warning", "Wish to save unsaved wall?"):
-				self.saveWall()
+	def saveWall(self): 																																									## Funcao para salvar a superficie de contorno
+		if self.createPart.get()==1:																																							# Se nessa superficie for ser geradas particulas
+			stringComposition_temp=[]																																							# Vetor temporario das composicoes
 
-		self.saved=False
-		stri="wall/"+self.Boundvar.get()+".png"
-		self.ImgPath.set(stri)
-		photo=ImageTk.PhotoImage(Image.open(self.ImgPath.get()))
-		self.Imglabel.configure(image= photo)
-		self.Imglabel.image=photo
+			for id,comp in enumerate(self.stringComposition):																																	# Para todas composi~coes
+				stringComposition_temp.append(comp.get())																																		# Adiciona-las no vetor temporario
 
-		self.createPart.set(0)
-		self.createPartT.set(0)
-		self.checkenable()
-		self.Nstring.set(0)
-		self.Ustring.set(0)
-		self.Vstring.set(0)
-		self.Wstring.set(0)
-		self.WallReflect.set(0)
-		for id, field in enumerate(self.elements):
-			self.stringComposition[id].set(0)
+			if self.Boundvar.get() == "LEFT":																																					# Se a superficie for 'LEFT'
+				strin=1																																											# Posicao dessa superficie no vetor a ser gerada 
+				self.promptPrint("Wall "+self.Boundvar.get() +" saved!")																														# Imprimir no LOG Console que a superficie foi salva
+			elif self.Boundvar.get() == "RIGHT":																																				# Se a superficie for 'LEFT'
+				strin=2																																											# Posicao dessa superficie no vetor a ser gerada
+				self.promptPrint("Wall "+self.Boundvar.get() +" saved!")																														# Imprimir no LOG Console que a superficie foi salva
+			elif self.Boundvar.get() == "FRONT":																																				# Se a superficie for 'LEFT'
+				strin=3																																											# Posicao dessa superficie no vetor a ser gerada
+				self.promptPrint("Wall "+self.Boundvar.get() +" saved!")																														# Imprimir no LOG Console que a superficie foi salva
+			elif self.Boundvar.get() == "BACK":																																					# Se a superficie for 'LEFT'
+				strin=4																																											# Posicao dessa superficie no vetor a ser gerada
+				self.promptPrint("Wall "+self.Boundvar.get() +" saved!")																														# Imprimir no LOG Console que a superficie foi salva
+			elif self.Boundvar.get() == "UP":																																					# Se a superficie for 'LEFT'
+				strin=5																																											# Posicao dessa superficie no vetor a ser gerada
+				self.promptPrint("Wall "+self.Boundvar.get() +" saved!")																														# Imprimir no LOG Console que a superficie foi salva
+			elif self.Boundvar.get() == "DOWN":																																					# Se a superficie for 'LEFT'
+				strin=6																																											# Posicao dessa superficie no vetor a ser gerada
+				self.promptPrint("Wall "+self.Boundvar.get() +" saved!")																														# Imprimir no LOG Console que a superficie foi salva
+			elif self.Boundvar.get() == "fill":																																					# Se a superficie for 'LEFT'
+				strin=7																																											# Posicao dessa superficie no vetor a ser gerada
+				self.promptPrint(self.Boundvar.get() +" saved!")																																# Imprimir no LOG Console que a superficie foi salva
+			elif self.Boundvar.get() == "Half 1":																																				# Se a superficie for 'LEFT'
+				strin=8																																											# Posicao dessa superficie no vetor a ser gerada
+				self.promptPrint(self.Boundvar.get() +" saved!")																																# Imprimir no LOG Console que a superficie foi salva
+			elif self.Boundvar.get() == "Half 2":																																				# Se a superficie for 'LEFT'
+				strin=9																																											# Posicao dessa superficie no vetor a ser gerada
+				self.promptPrint(self.Boundvar.get() +" saved!")																																# Imprimir no LOG Console que a superficie foi salva
+			self.Wall[strin-1]['GenDt']=self.createPartT.get()																																	# No vetor referente a superficie em questao, salvar um dicionario com a variavel createPartT atual
+			self.Wall[strin-1]['Nstring']=self.Nstring.get()																																	# No vetor referente a superficie em questao, salvar um dicionario com a variavel Nstring atual
+			self.Wall[strin-1]['Tstring']=self.Tstring.get()																																	# No vetor referente a superficie em questao, salvar um dicionario com a variavel Tstring atual
+			self.Wall[strin-1]['Ustring']=self.Ustring.get()																																	# No vetor referente a superficie em questao, salvar um dicionario com a variavel Ustring atual
+			self.Wall[strin-1]['Vstring']=self.Vstring.get()																																	# No vetor referente a superficie em questao, salvar um dicionario com a variavel Vstring atual
+			self.Wall[strin-1]['Wstring']=self.Wstring.get()																																	# No vetor referente a superficie em questao, salvar um dicionario com a variavel Wstring atual
+			self.Wall[strin-1]['WallReflect']=self.WallReflect.get()																															# No vetor referente a superficie em questao, salvar um dicionario com a variavel WallReflect atual
+			self.Wall[strin-1]['stringComposition']=stringComposition_temp																														# No vetor referente a superficie em questao, salvar um dicionario com o vetor temporario de composicoes
 
-	def saveWall(self):
-
-		if self.createPart.get()==1:
-			stringComposition_temp=[]
-
-			for id,comp in enumerate(self.stringComposition):
-				stringComposition_temp.append(comp.get())
-
-			if self.Boundvar.get() == "LEFT":
-				strin=1
-				self.promptPrint("Wall "+self.Boundvar.get() +" saved!")
-			elif self.Boundvar.get() == "RIGHT":
-				strin=2
-				self.promptPrint("Wall "+self.Boundvar.get() +" saved!")
-			elif self.Boundvar.get() == "FRONT":
-				strin=3
-				self.promptPrint("Wall "+self.Boundvar.get() +" saved!")
-			elif self.Boundvar.get() == "BACK":
-				strin=4
-				self.promptPrint("Wall "+self.Boundvar.get() +" saved!")
-			elif self.Boundvar.get() == "UP":
-				strin=5
-				self.promptPrint("Wall "+self.Boundvar.get() +" saved!")
-			elif self.Boundvar.get() == "DOWN":
-				strin=6
-				self.promptPrint("Wall "+self.Boundvar.get() +" saved!")
-			elif self.Boundvar.get() == "fill":
-				strin=7
-				self.promptPrint(self.Boundvar.get() +" saved!")
-			elif self.Boundvar.get() == "Half 1":
-				strin=8
-				self.promptPrint(self.Boundvar.get() +" saved!")
-			elif self.Boundvar.get() == "Half 2":
-				strin=9
-				self.promptPrint(self.Boundvar.get() +" saved!")
-			self.Wall[strin-1]['GenDt']=self.createPartT.get()
-			self.Wall[strin-1]['Nstring']=self.Nstring.get()
-			self.Wall[strin-1]['Tstring']=self.Tstring.get()
-			self.Wall[strin-1]['Ustring']=self.Ustring.get()
-			self.Wall[strin-1]['Vstring']=self.Vstring.get()
-			self.Wall[strin-1]['Wstring']=self.Wstring.get()
-			self.Wall[strin-1]['WallReflect']=self.WallReflect.get()
-			self.Wall[strin-1]['stringComposition']=stringComposition_temp
-
-
-		self.save.config(bg='green')
-		self.saved=True
+		self.save.config(bg='green')																																							# Define o botão 'Save Surface' com a cor verde
+		self.saved=True 																																										# Define que a parede atual foi salva
 					
-	def checkCTI(self,event=None):
+	def checkCTI(self,event=None):																																							## Funcao para atualizar a interface com base no mecanismo de cinetica quimica
+		for id, field in enumerate(self.elements):																																				# Para todos elementos
+			self.entryComposition[id].grid_forget()																																				# Reset inputs		
+			self.labelComposition[id].grid_forget()																																				# Reset textos inputs
+			self.checkComposition[id].grid_forget()																																				# Reset checks
+			self.labelComposition[id].grid_forget() 																																			# Reset texto checks
 
+		if platform.system()=='Linux':																																							# Se for Linux 	
+			if (self.CTIvar.get()=="SP21RE"):																																					# Se o modelo de cinetica quimica for SP21RE
+				self.CTIfile="CTI Files/sp21re.cti"																																				# Caminho para o arquivo .cti
+				self.solution_input=[self.CTIfile,None]																																			# Combinação do arquivo .cti e nome da fase
 
-		for id, field in enumerate(self.elements):
-			self.entryComposition[id].grid_forget()
-			self.labelComposition[id].grid_forget()
-			self.checkComposition[id].grid_forget()
-			self.labelComposition[id].grid_forget()
+			elif (self.CTIvar.get()=="GRI Mech 3.0"):																																			# Se o modelo de cinetica quimica for GRI Mech 3.0
+				self.CTIfile="CTI Files/GRI30.cti"																																				# Caminho para o arquivo .cti
+				self.solution_input=[self.CTIfile,"gri30_mix"]																																	# Combinação do arquivo .cti e nome da fase
 
+			elif (self.CTIvar.get()=="CH4 Global"):																																				# Se o modelo de cinetica quimica for CH4 Global
+				self.CTIfile="CTI Files/methane_global.cti"																																		# Caminho para o arquivo .cti
+				self.solution_input=[self.CTIfile,"ch4mec_mix"]																																	# Combinação do arquivo .cti e nome da fase
 			
-		if (self.CTIvar.get()=="SP21RE"):
-			self.CTIfile="CTI Files\\sp21re.cti"
-		elif (self.CTIvar.get()=="GRI Mech 3.0"):
-			self.CTIfile="CTI Files\\GRI30.cti"
-		elif (self.CTIvar.get()=="CH4 Global"):
-			self.CTIfile="CTI Files\\methane_global.cti"
-		elif (self.CTIvar.get()=="Local file"):
-			self.CTIfile = filedialog.askopenfilename(title='Select file',filetypes = (("CTI files","*.cti"),("all files","*.*")))
+			elif (self.CTIvar.get()=="Kazakov"):																																				# Se o modelo de cinetica quimica for Kazakov
+				self.CTIfile="CTI Files/methane-kazakov21.cti"																																	# Caminho para o arquivo .cti
+				self.solution_input=[self.CTIfile,None]																																			# Combinação do arquivo .cti e nome da fase
+			
+			elif (self.CTIvar.get()=="Local file"):																																				# Se o modelo de cinetica quimica for local
+				self.CTIfile = filedialog.askopenfilename(title='Select file',filetypes = (("CTI files","*.cti"),("all files","*.*")))															# Caminho para o arquivo .cti
+				self.solution_input=[self.CTIfile,None]																																			# Combinação do arquivo .cti e nome da fase
 
-		self.elements=ct.Solution(self.CTIfile).species_names
-		self.promptPrint(self.CTIfile+ " was just imported")
+		elif platform.system()=='Windows':																																						# Se for Windows... mesma coisa, só inverte a barra
+
+			if (self.CTIvar.get()=="SP21RE"):
+				self.CTIfile="CTI Files\\sp21re.cti"
+				self.solution_input=[self.CTIfile,None]
+
+			elif (self.CTIvar.get()=="GRI Mech 3.0"):
+				self.CTIfile="CTI Files\\GRI30.cti"
+				self.solution_input=[self.CTIfile,"gri30_mix"]
+			
+			elif (self.CTIvar.get()=="CH4 Global"):
+				self.CTIfile="CTI Files\\methane_global.cti"
+				self.solution_input=[self.CTIfile,"ch4mec_mix"]
+			
+			elif (self.CTIvar.get()=="Kazakov"):
+				self.CTIfile="CTI Files\\methane-kazakov21.cti"
+				self.solution_input=[self.CTIfile,None]
+			
+			elif (self.CTIvar.get()=="Local file"):
+				self.CTIfile = filedialog.askopenfilename(title='Select file',filetypes = (("CTI files","*.cti"),("all files","*.*")))
+				self.solution_input=[self.CTIfile,None]
+
+		self.elements=ct.Solution(self.solution_input[0],self.solution_input[1]).species_names																									# Define o vetor de elementos com base nas especies quimicas do arquivo .cti
+		self.promptPrint(self.CTIfile+ " was just imported")																																	# Imprimi no LOG Console que o arquivo .cti foi importado
 
 		global elementos
-		elementos=self.elements
+		elementos=self.elements 																																								# Define um vetor elementos igual ao outro
 
-		self.checkComposition=[0]*len(self.elements)
-		self.PlotConfiguration=[0]*len(self.elements)
-		self.stringComposition=[0]*len(self.elements)
-		self.labelComposition=[0]*len(self.elements)
-		self.entryComposition=[0]*len(self.elements)
+		self.checkComposition=[0]*len(self.elements) 																																			# Define que o vetor de composicao a serem plotados tem dimensao igual ao numero de elementos
+		self.PlotConfiguration=[0]*len(self.elements) 																																			# Define que o vetor de composicao a serem plotados tem dimensao igual ao numero de elementos
+		self.stringComposition=[0]*len(self.elements) 																																			# Define que o vetor com os nomes das especies quimicas tem dimensao igual ao numero de elementos
+		self.labelComposition=[0]*len(self.elements) 																																			# Define que o vetor com os nomes das especies quimicas tem dimensao igual ao numero de elementos
+		self.entryComposition=[0]*len(self.elements) 																																			# Define que o vetor de composicao inicial tem dimensao igual ao numero de elementos
 
-		for id, field in enumerate(self.elements):
-			frammim=Frame(self.PlotLabel,bg='')
-			frammim.grid(row=id%4 ,column=id//4) 
-			self.PlotConfiguration[id]=StringVar()
-			self.PlotConfiguration[id].set(0)
-			self.checkComposition[id]=Checkbutton(self.PlotLabel,variable=self.PlotConfiguration[id])
-			self.checkComposition[id].grid(in_=frammim,row=0,column=0,sticky='EN') 
-			self.labelComposition[id]=Label(self.PlotLabel,text=field)
-			self.labelComposition[id].grid(in_=frammim,row=0,column=1,sticky='WN') 
+		for id, field in enumerate(self.elements): 																																				# Para todos elementos
+			frammim=Frame(self.PlotLabel,bg='') 																																				# Criacao de um quadro dentro da sub janela PlotLabel
+			frammim.grid(row=id%4 ,column=id//4) 																																				# Alocacao do quadro dentro da sub janela PlotLabel
+			self.PlotConfiguration[id]=StringVar()																																				# String dinamica com o nome da especie
+			self.PlotConfiguration[id].set(0) 																																					# Inteiro dinamico que carrega informacao booleana se a especie sera plotada ou nao
+			self.checkComposition[id]=Checkbutton(self.PlotLabel,variable=self.PlotConfiguration[id])																							# Botao do tipo check
+			self.checkComposition[id].grid(in_=frammim,row=0,column=0,sticky='EN')  																											# Alocacao do botao no quadro
+			self.labelComposition[id]=Label(self.PlotLabel,text=field) 																															# Texto com o nome da especie quimica
+			self.labelComposition[id].grid(in_=frammim,row=0,column=1,sticky='WN')  																											# Alocacao do texto no quadro
 		
-		for id, field in enumerate(self.elements):
-			self.labelComposition[id]=Label(self.CompositionLabel,text=field)
-			self.labelComposition[id].grid(row=id ,sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
-			self.stringComposition[id]=StringVar()
-			self.stringComposition[id].set(0)
-			self.entryComposition[id]=Entry(self.CompositionLabel,textvariable=self.stringComposition[id],state='disabled')
-			self.entryComposition[id].grid(row=id, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
-		self.checkenable()
+		for id, field in enumerate(self.elements):																																				# Para todos elementos
+			self.labelComposition[id]=Label(self.CompositionLabel,text=field) 																													# Texto com o nome da especie quimica
+			self.labelComposition[id].grid(row=id ,sticky='W', padx=5, pady=5, ipadx=5, ipady=5)  																								# Alocacao do texto na sub janela CompositionLabel
+			self.stringComposition[id]=StringVar() 																																				# String dinamica com o valor da composicao
+			self.stringComposition[id].set(0)																																					# Define a composicao padrao como 0
+			self.entryComposition[id]=Entry(self.CompositionLabel,textvariable=self.stringComposition[id],state='disabled') 																	# Input da composicao 
+			self.entryComposition[id].grid(row=id, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 																						# Alocacao no input na sub janela CompositionLabel
+		self.checkenable() 																																										# Desmarca todos checks
 
-		self.Wall=[]
-		for i in range(0,9):
-			self.Wall.append({'GenDt':0,'Nstring':'0','Tstring':'0','Ustring':'0','Vstring':'0','Wstring':'0','stringComposition':[0.0]*len(self.elements),'WallReflect':0})
-		self.save.config(bg='red')
-		self.updateTheme()
+		self.Wall=[]																																											# Cria o vetor Wall vazio
+		for i in range(0,9):				
+			self.Wall.append({'GenDt':0,'Nstring':'0','Tstring':'0','Ustring':'0','Vstring':'0','Wstring':'0','stringComposition':[0.0]*len(self.elements),'WallReflect':0})					# Adiciona 6 dicionarios com as informacoes das superficies de contorno nulas
+		self.save.config(bg='red')																																								# Configura o botao 'Save Surface' com a cor vermelha
+		self.updateTheme()																																										# Atualiza o tema
 
-	def onFrameConfigure(self, event):
+	def onFrameConfigure(self, event):																																						## Funcao para canvas responsivo
 		self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
-
-	def onFrameConfigurePlot(self, event):
+	def onFrameConfigurePlot(self, event):																																					## Funcao para canvas responsivo
 		self.plotcanvas.configure(scrollregion=self.plotcanvas.bbox("all"))
 
-	def checkenable(self):
-		if (self.createPart.get()==0):
-			self.checkInT.configure(state='disabled')
-			self.entryT.configure(state='disabled')
-			self.entryN.configure(state='disabled')
-			self.entryU.configure(state='disabled')
-			self.entryV.configure(state='disabled')
-			self.entryW.configure(state='disabled')
+	def checkenable(self): 																																									## Funcao para tirar todos checks
+		if (self.createPart.get()==0):																																							# Se na superficie não sao geradas particulas
+			self.checkInT.configure(state='disabled')																																			# Desabilita checkInT
+			self.entryT.configure(state='disabled')																																				# Desabilita entryT
+			self.entryN.configure(state='disabled')																																				# Desabilita entryN
+			self.entryU.configure(state='disabled')																																				# Desabilita entryU
+			self.entryV.configure(state='disabled')																																				# Desabilita entryV
+			self.entryW.configure(state='disabled')																																				# Desabilita entryW
 			for id, field in enumerate(self.elements):
-				self.entryComposition[id].configure(state='disabled')
+				self.entryComposition[id].configure(state='disabled')																															# Desabilita todos checks de especies quimicas
 				
-
 		else:
-			self.checkInT.configure(state='normal')
-			self.entryT.configure(state='normal')
-			self.entryN.configure(state='normal')
-			self.entryU.configure(state='normal')
-			self.entryV.configure(state='normal')
-			self.entryW.configure(state='normal')
+			self.checkInT.configure(state='normal')																																				# Zera checkInI
+			self.entryT.configure(state='normal')																																				# Zera entryT
+			self.entryN.configure(state='normal')																																				# Zera entryN
+			self.entryU.configure(state='normal')																																				# Zera entryU
+			self.entryV.configure(state='normal')																																				# Zera entryV
+			self.entryW.configure(state='normal')																																				# Zera entryW
 			for id, field in enumerate(self.elements):
-				self.entryComposition[id].configure(state='normal')
+				self.entryComposition[id].configure(state='normal')																																# Zera todos checks de especies quimicas
 
-	def saveInput(self):
+	def saveInput(self):																																									## Funcao para salvar as condicoes em arquivo externo
+		self.promptPrint("The conditions set are available in the file setup.txt in the folder OUTPUT") 																						# Imprime no LOG Console que as condicoes foram exportadas
 
-		self.promptPrint("The conditions set are available in the file setup.txt in the folder OUTPUT")
-		setup=open("OUTPUT\\setup.char",'w')
-		setup.write(self.CTIfile + "\n")
-		setup.write(self.MODELvar.get()+ "\n")
-		setup.write(self.Param[0].get()+" "+self.Param[1].get()+" "+self.Param[2].get()+ "\n")
+		if platform.system()=='Linux':																																							# Se for Linux
+			setup=open("OUTPUT/setup.char",'w')																																					# Abre arquivo setup.char
+		elif platform.system()=='Windows':																																						# Se for Windows... mesma coisa só inverte a barra
+			setup=open("OUTPUT\\setup.char",'w')
+		setup.write(self.CTIfile + "\n")																																						# Escreve no arquivo o arquivo CTI
+		setup.write(self.MODELvar.get()+ "\n")																																					# Escreve no arquivo o modelo de micromistura
+		setup.write(self.Param[0].get()+" "+self.Param[1].get()+" "+self.Param[2].get()+ "\n")																									# Escreve no arquivo os parametros do modelo de micromistura
+		setup.write(self.DTstring.get()+" "+self.TFstring.get()+ "\n")																															# Escreve no arquivo os parametros de tempo
+		for element in self.PlotConfiguration: 
+			setup.write( element.get()+ " ")		
+		setup.write("\n")
 
-		for i in range(0,9):
-			name="\n \n Wall " +str(i+1)+ " \n \n "
-			setup.write(name)
-			setup.write("\n GenDt:"+str(self.Wall[i]['GenDt']))
-			setup.write("\n N:"+self.Wall[i]['Nstring'])
-			setup.write("\n T:"+self.Wall[i]['Tstring'])
-			setup.write("\n U:"+self.Wall[i]['Ustring'])
-			setup.write("\n V:"+self.Wall[i]['Vstring'])
-			setup.write("\n W:"+self.Wall[i]['Wstring'])
-			setup.write("\n Wall Reflect:"+str(self.Wall[i]['WallReflect']))
-			setup.write("\n Composition: \n")
-			for id, element in enumerate(self.elements):
-				setup.write(element+":"+str(self.Wall[i]['stringComposition'][id]) + '\n')
+		for i in range(0,9):																																									# Para todas superficies de contorno
+			name="\n \n Wall " +str(i+1)+ " \n \n "																																				
+			setup.write(name)																																									# Escreve no arquivo a superficie em questao
+			setup.write("\n GenDt:"+str(self.Wall[i]['GenDt']))																																	# Escreve no arquivo se e para gera particulas com o tempo
+			setup.write("\n N:"+self.Wall[i]['Nstring'])																																		# Escreve no arquivo o numero de particulas
+			setup.write("\n T:"+self.Wall[i]['Tstring'])																																		# Escreve no arquivo a temperatura
+			setup.write("\n U:"+self.Wall[i]['Ustring'])																																		# Escreve no arquivo a velocidade no eixo x
+			setup.write("\n V:"+self.Wall[i]['Vstring'])																																		# Escreve no arquivo a velocidade no eixo y
+			setup.write("\n W:"+self.Wall[i]['Wstring'])																																		# Escreve no arquivo a velocidade no eixo z
+			setup.write("\n Wall Reflect:"+str(self.Wall[i]['WallReflect']))																													# Escreve no arquivo se a superficie de contorno reflete particulas
+			setup.write("\n Composition: \n")																																					# Escreve no arquivo a composicao
+			for id, element in enumerate(self.elements):																																		
+				setup.write(element+":"+str(self.Wall[i]['stringComposition'][id]) + '\n')																													
 
-		setup.close()
+		setup.close()																																											# Fecha o arquivo
 
-	def run(self):
+	def run(self):																																											## Funcao para rodar a simulacao evitando erro
 		try:
-			self.running()
+			self.running()																																										# Tenta rodar pela funcao running
 		except:
-			self.promptPrint("Insuficient data")
+			self.promptPrint("Insuficient data")																																				# Caso nao consiga ha falta de dados
 			print(sys.exc_info()[0])
 			self.run.config(state='normal')
 
-	def running(self):
-		self.run.config(state='disabled')
+	def running(self):																																										## Funcao para rodar a simulacao
+		self.run.config(state='disabled')																																						# Confere se o usuario realmente deseja comecar a simulacao sem salvar a ultima superficie de controle
 		if not self.saved :
 			if messagebox.askokcancel("Warning", "Wish to save unsaved wall?"):
 				self.saveWall()
@@ -536,12 +514,10 @@ class App:
 				self.run.config(state='normal')
 				return None
 
+		self.Param=[self.Alphastring,self.Cwstring,self.D0string]																																# Vetor de parametros de modelo de micromistura
+		self.saveInput()																																										# Condicoes de contorno salvo em arquivo externo
 
-		self.Param=[self.Alphastring,self.Cwstring,self.D0string]
-
-		self.saveInput()
-
-		if self.MODELvar.get()=="Curl":
+		if self.MODELvar.get()=="Curl":																																							# Verifica o modelo de micromistura e associa a funcao com ele
 			Model=Simulate_Curl
 		elif self.MODELvar.get()=="Curl Modificado":
 			Model=Simulate_CurlM
@@ -554,25 +530,31 @@ class App:
 		elif self.MODELvar.get()=="Langevin Estendido":
 			Model=Simulate_LangeEst
 
+		#if self.Burnvar.get()=="Cantera":																																						# Verifica o modelo de combustao e associa a funcao com ele
+		React=BurnCantera
+	#	elif self.Burnvar.get()=="Don't burn":
+	#		React=DontBurn
 
-		if self.Burnvar.get()=="Cantera":
-			React=BurnCantera
-		elif self.Burnvar.get()=="Don't burn":
-			React=DontBurn
-
-		PlotConfigurationsent=[]
+		PlotConfigurationsent=[]																																								# Cria vetor vazio
 		for i in range(0,len(self.PlotConfiguration)):
-			PlotConfigurationsent.append(self.PlotConfiguration[i].get())
+			PlotConfigurationsent.append(self.PlotConfiguration[i].get())																														# Adiciona-se as configuracoes de plotagem
 
-		Simulate(self.Wall,self.Param,self.DTstring,self.TFstring,Model,React,PlotConfigurationsent)
+		start=time.process_time()																																								# Inicia o cronometro para saber a duracao da simulacao posteriormente
 
-		self.stop_loading()
+		Simulate(self.Wall,self.Param,self.DTstring,self.TFstring,Model,React,PlotConfigurationsent)																							# Chama a funcao Simulate que tem todo o código de simulacao
+		end=time.process_time()																																									# Termina o cronometro
 
-		self.run.config(state='normal')
+		self.promptPrint('Process Time:'+str(int((end-start)/60))+ ' minutes and '+str(int((end-start)%60))+ ' seconds') 																		# Imprime no LOG Console o tempo da simulacao
 
-	def stop_loading(self):
+		self.stop_loading()																																										# Chama a funcao stop_loading que faz o programa apresentar um gif ao final da simulacao
 
-		imagelist=["done\\0.png","done\\1.png","done\\2.png","done\\3.png","done\\4.png","done\\5.png","done\\6.png","done\\7.png","done\\8.png"]    
+		self.run.config(state='normal')																																							# Habilita o botao Run novamente
+
+	def stop_loading(self): 																																								## Funcao para apresentar o gif ao final da simulacao
+		if platform.system()=='Linux':																																							# Se for Linux
+			imagelist=["done/0.png","done/1.png","done/2.png","done/3.png","done/4.png","done/5.png","done/6.png","done/7.png","done/8.png"]  													# Caminho das imagens
+		elif platform.system()=='Windows':																																						# Se for Windows ...  mesma coisa apenas inverte as barras
+			imagelist=["done\\0.png","done\\1.png","done\\2.png","done\\3.png","done\\4.png","done\\5.png","done\\6.png","done\\7.png","done\\8.png"]    
 		
 		self.giflist = []
 		for imagefile in imagelist:
@@ -589,23 +571,54 @@ class App:
 			time.sleep(0.1) 
 		time.sleep(1)
 		self.promptPrint("Finished.")
+		self.promptPrint("=======================================")
 		self.prompt.delete(last)
 
 	def import_(self):
-		filename = filedialog.askopenfilename(initialdir = "C:\\Users\\laura\\Desktop\\IC\\CHARMANDER\\beta\\OUTPUT",title='Select file',filetypes = (("CHARMANDER files","*.char"),("all files","*.*")))
+		filename = filedialog.askopenfilename(initialdir = "/OUTPUT",title='Select file',filetypes = (("CHARMANDER files","*.char"),("all files","*.*")))
 		doc=open(filename,'r')
 
 		self.promptPrint("The conditions set in the file " + doc.name+ " are now being used")
 
 
 		self.CTIfile=doc.readline().strip('\n')
+		if platform.system()=='Linux':		
+
+			if (self.CTIfile=="CTI Files/sp21re.cti"):
+				self.CTIvar.set("SP21RE")
+				self.solution_input=[self.CTIfile,None]
+
+			elif (self.CTIfile=="CTI Files/GRI30.cti"):
+				self.CTIvar.set("GRI Mech 3.0")
+				self.solution_input=[self.CTIfile,"gri30_mix"]
+
+			elif (self.CTIfile=="CTI Files/methane_global.cti"):
+				self.CTIvar.set("CH4 Global")
+				self.solution_input=[self.CTIfile,"ch4mec_mix"]
+
+			elif (self.CTIfile=="CTI Files/methane-kazakov21.cti"):
+				self.CTIvar.set("Kazakov")
+				self.solution_input=[self.CTIfile,None]
+
+		elif platform.system()=='Windows':
+
+			if (self.CTIfile=="CTI Files\\sp21re.cti"):
+				self.CTIvar.set("SP21RE")
+				self.solution_input=[self.CTIfile,None]
+
+			elif (self.CTIfile=="CTI Files\\GRI30.cti"):
+				self.CTIvar.set("GRI Mech 3.0")
+				self.solution_input=[self.CTIfile,"gri30_mix"]
+
+			elif (self.CTIfile=="CTI Files\\methane_global.cti"):
+				self.CTIvar.set("CH4 Global")
+				self.solution_input=[self.CTIfile,"ch4mec_mix"]
+
+			elif (self.CTIfile=="CTI Files\\methane-kazakov21.cti"):
+				self.CTIvar.set("Kazakov")
+				self.solution_input=[self.CTIfile,None]
 		self.checkCTI()
-		if (self.CTIfile=="CTI Files\\sp21re.cti"):
-			self.CTIvar.set("SP21RE")
-		elif (self.CTIfile=="CTI Files\\GRI30.cti"):
-			self.CTIvar.set("GRI Mech 3.0")
-		elif (self.CTIfile=="CTI Files\\methane_global.cti"):
-			self.CTIvar.set("CH4 Global")
+
 
 
 		self.MODELvar.set(doc.readline().strip('\n'))
@@ -615,6 +628,16 @@ class App:
 		self.Param[0].set(Param[0])
 		self.Param[1].set(Param[1])
 		self.Param[2].set(Param[2])
+
+
+
+		TimeParam=doc.readline().strip('\n').split(' ')
+		self.DTstring.set(TimeParam[0])
+		self.TFstring.set(TimeParam[1])
+
+		entryComposition=doc.readline().strip('\n').split(' ')	
+		for i in range(0,len(elementos)):
+			self.PlotConfiguration[i].set(entryComposition[i])
 
 		for f in range(0,9):
 			doc.readline()
@@ -652,7 +675,7 @@ class App:
 		subprocess.Popen(["manual.pdf"],shell=True)
 
 ###############################################################################
-##                               CLASSE PARTÍCULA                            ##
+##                               CLASSE PARTICULA                            ##
 ###############################################################################
 
 class part():
@@ -668,7 +691,6 @@ class part():
 		self.v=v
 		self.w=w
 
-		self.T=T
 		self.comp=comp
 
 
@@ -679,8 +701,9 @@ class part():
 		self.gamma_t=0.0
 		self.gamma_t_old=0.0
 
+		self.T=  1200.
 		self.P=101325       #[Pa]
-		self.rho=287/self.P*self.T      #[Kg/m³]
+		self.rho=287/self.P*self.T      #[Kg/m^3]
 
 		self.R_r=0
 
@@ -689,8 +712,10 @@ class part():
 		for id, element in enumerate(elementos):
 			self.omega[elementos[id]]=omega_te
 
-		self.gas=ct.Solution(ap.CTIfile)
+		self.gas=ct.Solution(ap.solution_input[0],ap.solution_input[1])
+
 		self.gas.TPX=self.T,self.P,self.comp
+		self.Xco=self.comp["CH4"]	
 
 
 	def getPosition(self):
@@ -717,8 +742,17 @@ class part():
 		self.gamma_old=self.gamma
 		self.gamma=new
 
+	def updateXT(self):
+		#c=1-self.comp["CH4"]/self.Xco
+		#print(self.Xco)
+		#self.T= c * (Tb-Tu) + Tu
+		#self.T=1200.
+		self.P=self.gas.P
+		self.T=self.gas.T
+		self.gas.TPX=self.T,self.P,self.comp
+
 ###############################################################################
-##                              FUNÇÕES DO PROGRAMA                          ##
+##                              FUNCOES DO PROGRAMA                          ##
 ###############################################################################
 
 def random_float(min,max):
@@ -750,20 +784,23 @@ def plot_3D(x,y,z,data,plot):
 	plt.savefig(name)
 	plt.close('all')
 
-def plot_comp(x,data,plot):
-	global filenames_comp,frame_comp
-	#plt.plot(x,h,'.b',LineWidth=0.1)
-	for p in data:
-		plt.plot(x,p,'.',LineWidth=0.1)
-	#plt.plot(x,o,'.r',LineWidth=0.1)
-	plt.axis([0,1,0,1])
-	plt.xlabel('Eixo x')
-	plt.ylabel('%')
-	plt.legend(plot)
-	frame_comp[0]+=1
-	frame_comp[1]=t
-	name='OUTPUT/frames/h_'+str(frame_comp[0])+'.png'
-	filenames_comp.append(name)
+def plot_T(x,y,z,T):
+	global frame_T,filenames_T
+	fig=plt.figure()
+	ax = fig.add_subplot(1,1,1, projection='3d')
+	pnt1=ax.scatter(x,y,z,c=T,cmap=plt.cm.jet, edgecolor='black',vmax=Tb,vmin=Tu)
+	cbar=plt.colorbar(pnt1)
+	plt.xlim(0.0,1.0)
+	plt.ylim(0.0,1.0)
+	ax.set_zlim3d(0.0,1.0)
+	cbar.set_label("Temperature [K]")
+	ax.set_xlabel('Eixo x')
+	ax.set_ylabel('Eixo y')
+	ax.set_zlabel('Eixo z')
+	frame_T[0]+=1
+	frame_T[1]=t
+	name='OUTPUT/frames/t_'+str(frame_T[0])+'.png'
+	filenames_T.append(name)
 	plt.savefig(name)
 	plt.close('all')
 
@@ -789,7 +826,8 @@ def plot_PDF(data_t,plot):
 		plt.plot(x, p, 'o-')
 	plt.axis([-0.1,1.1,0,len(p)])
 	plt.grid()
-	plt.ylabel('[]')
+	plt.ylabel('Cumulative Distribution Function')
+	plt.xlabel('Y_N')
 	plt.legend(plot)
 	frame_CDF[0]+=1
 	frame_CDF[1]=t
@@ -802,8 +840,8 @@ def plot_PDF(data_t,plot):
 		plt.plot(x, pp, '.-')
 
 	plt.axis([-0.1,1.1,0,100])
-	plt.ylabel('Probabilidade de [] %')
-	plt.xlabel('[]')
+	plt.ylabel('Probability Density Function')
+	plt.xlabel('Y_N')
 	plt.legend(plot)
 	plt.grid()
 	#plt.legend(["$H_2$","$H_2O$","$O_2$"])
@@ -816,12 +854,12 @@ def plot_PDF(data_t,plot):
 
 
 ###############################################################################
-##                               FUNÇÃO SIMULAR                              ##
+##                               FUNCAO SIMULAR                              ##
 ###############################################################################
 
 def Simulate(Wall,Param,DT,TF,Model,React,PlotConfiguration):
 
-	global frame_3D,frame_CDF,frame_comp,frame_PDF,filenames_3D,filenames_comp,filenames_CDF,filenames_PDF
+	global frame_3D,frame_CDF,frame_PDF,frame_T,filenames_3D,filenames_CDF,filenames_PDF,filenames_T
 	global t,dt,npart,part_u,C_omega,alpha,d0
 	global erro, used
 	erro=0
@@ -831,14 +869,14 @@ def Simulate(Wall,Param,DT,TF,Model,React,PlotConfiguration):
 
 	part_u=[]
 	filenames_3D=[]
-	filenames_comp=[]
+	filenames_T=[]
 	filenames_CDF=[]
 	filenames_PDF=[]
 
 	frame_3D=[0,0]
 	frame_CDF=[0,0]
-	frame_comp=[0,0]
 	frame_PDF=[0,0]
+	frame_T=[0,0]
 
 	## Reading Plot Parameters
 
@@ -871,10 +909,10 @@ def Simulate(Wall,Param,DT,TF,Model,React,PlotConfiguration):
 	## Reading Boundary Conditions in Wall
 
 	for i_wall in range (0,len(Wall)):
-		
 		npart=int(Wall[i_wall]["Nstring"])
 		if npart>0:
 			for i in range(0,npart):
+				print(i)
 				u=float(Wall[i_wall]["Ustring"])
 				v=float(Wall[i_wall]["Vstring"])
 				w=float(Wall[i_wall]["Wstring"])
@@ -940,7 +978,7 @@ def Simulate(Wall,Param,DT,TF,Model,React,PlotConfiguration):
 	ap.promptPrint("Starting simulation...")
 	root.update()
 	###############################################################################
-	##                          INÍCIO DO LOOP                                   ##
+	##                          INICIO DO LOOP                                   ##
 	###############################################################################
 
 	per=ap.prompt.create_text((10, ( ap.fontsize+10) * used + 10),anchor="w",text="0 %",fill='green',font=('freemono', ap.fontsize))
@@ -957,11 +995,12 @@ def Simulate(Wall,Param,DT,TF,Model,React,PlotConfiguration):
 		root.update()
 		
 
-	  #Resetando os vetores e valores necessários
+	  #Resetando os vetores e valores necessarios
 		x=[]
 		y=[]
 		z=[]
 		p=[]
+		T=[]
 		for i in plot:
 			p.append([])
 		l=0
@@ -977,7 +1016,7 @@ def Simulate(Wall,Param,DT,TF,Model,React,PlotConfiguration):
 			if (part_i.x >1) or (part_i.x <0) or (part_i.y >1) or (part_i.y <0) or (part_i.z >1) or (part_i.z <0):
 				del(part_u[id - l])
 				l += 1
-			elif max(part_i.getVelocity())!= 0:
+			elif max(part_i.getVelocity())!=0:
 				dW=1/((2*np.pi*dt)**(1/2))*( exp(-(t+dt)**2    /(2*dt))   -   exp(-(t)**2     /(2*dt))  )
 				A=(part_i.getVelocity() + (part_i.gamma+part_i.gamma_t-part_i.gamma_old+part_i.gamma_t_old)/(part_i.getPosition()-part_i.getOlderPosition()) ) 
 				B=(2*(part_i.gamma + part_i.gamma_t))**(1/2)
@@ -989,17 +1028,18 @@ def Simulate(Wall,Param,DT,TF,Model,React,PlotConfiguration):
 				x.append(part_i.x)
 				y.append(part_i.y)
 				z.append(part_i.z)
+				T.append(part_i.gas.T)
 				for id,element in enumerate(plot):
 					p[id].append(part_i.comp[element])
 			#Plotando e salvando imagens
 			plot_3D(x,y,z,p,plot)
-			plot_comp(z,p,plot)
+			plot_T(x,y,z,T)
 			plot_PDF(p,plot)
 
-	  #Reação Química
+	  #Reacao Quimica
 		React()
 
-	  #Calculando a comp média
+	  #Calculando a composicao media
 		Model()
 
       # Gerando particulas novas
@@ -1012,7 +1052,7 @@ def Simulate(Wall,Param,DT,TF,Model,React,PlotConfiguration):
 	 
 	ap.promptPrint("Errors: "+str(erro))
 	###############################################################################
-	##                          GERAÇÃO DOS GIFS                                 ##
+	##                          GERACAO DOS GIFS                                 ##
 	###############################################################################
 		
 	ap.promptPrint("Generating GIFs...")
@@ -1020,13 +1060,6 @@ def Simulate(Wall,Param,DT,TF,Model,React,PlotConfiguration):
 	images=[]
 	with imageio.get_writer('OUTPUT/3D.gif', mode='I') as writer:
 		for filename in filenames_3D:
-			image = imageio.imread(filename)
-			writer.append_data(image)
-			remove(filename)
-
-	images=[]
-	with imageio.get_writer('OUTPUT/compositon.gif', mode='I') as writer:
-		for filename in filenames_comp:
 			image = imageio.imread(filename)
 			writer.append_data(image)
 			remove(filename)
@@ -1047,7 +1080,7 @@ def Simulate(Wall,Param,DT,TF,Model,React,PlotConfiguration):
 
 
 ###############################################################################
-##                           MODELOS DE COMBUSTÃO                            ##
+##                           MODELOS DE COMBUSTAO                            ##
 ###############################################################################
 
 def BurnCantera():
@@ -1098,7 +1131,10 @@ def Simulate_IEM():
 				erro+=1
 			
 			n_e+=1
+		#part_i.updateXT()
 		part_i.gas.X=part_i.comp
+		
+	#print(part_i.comp)
 
 ## Extended Interaction by Exchange with the Mean 
 
@@ -1207,35 +1243,42 @@ def Simulate_LangeEst():
 		part_i.updateGamma(part_i.gas.viscosity)
 
 ###############################################################################
-##                     DEFININDO CONSTANTES E PARÂMETROS                     ##
+##                     DEFININDO CONSTANTES E PARAMETROS                     ##
 ###############################################################################
 
 global div,n_div,d,k,E_a,T_a,E_a,alpha,beta,gamma,PRE_EXP,delta,ap
 global used
-used=0
+used=0										# Contador de linhas usadas no LOG Console
 	  
-div = 100                                   #divisão da variável z associada ao PDF
+div = 100                                   #divisao da variavel z associada ao PDF
 n_div = 1/div
 d = n_div
 k = 0                                       #contador
 
-E_a=83600/9.28 #9000 #8.36 #10.45 #8.36
-T_a=E_a/8.315 #10054.0
-alpha = (2000.-560.)/2000. #0.7273 #6.
-beta =(alpha*T_a)/2000. #2.0 #6.287 #17.95 #13. #10.0d0 #17.95
-gamma=0.5*beta**2*(1.0+0.5*beta*(3.0*alpha-1.344)) 
-PRE_EXP=(gamma*1.2*1.2)/(0.0000751*exp(-beta/alpha))
+#E_a=83600/9.28 #9000 #8.36 #10.45 #8.36
+#T_a=E_a/8.315 #10054.0
+Tu=560.
+Tb=2000.
+#alpha = (Tb-Tu)/Tb #0.7273 #6.
+#beta =(alpha*T_a)/2000. #2.0 #6.287 #17.95 #13. #10.0d0 #17.95
+#gamma=0.5*beta**2*(1.0+0.5*beta*(3.0*alpha-1.344)) 
+#PRE_EXP=(gamma*1.2*1.2)/(0.0000751*exp(-beta/alpha))
 
 delta = 0.1                                 #Tamanho do filtro
 
 ###############################################################################
-##                       ÍNICIO DA INTERFACE GRÁFICA                         ##
+##                       INICIO DA INTERFACE GRAFICA                         ##
 ###############################################################################
-
+#Criação do ambiente
 root = Tk(className=" CHARMANDER : beta version")   
 
-root.state('zoomed')
-root.iconbitmap('icon.ico')
+try:   	#Windows
+	root.state('zoomed')  			#Fullscreen
+	root.iconbitmap('icon.ico') 	#Icon
+except: #Linux
+	root.attributes('-zoomed',True) #Fullscreen
+	root.iconbitmap('@icon.xbm')	#Icon
 
+#Inicio da Interface Grafica
 ap=App(root)
 root.mainloop()

@@ -6,3 +6,17 @@ OUTPUT/CDF.gif
 OUTPUT/PDF.gif
 
 OUTPUT/compositon.gif
+
+manual/document.aux
+
+manual/document.bbl
+
+manual/document.blg
+
+manual/document.out
+
+manual/document.log
+
+manual/document.synctex.gz
+
+manual/document.toc
