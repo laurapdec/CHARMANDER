@@ -35,12 +35,42 @@ class App:
 
 
         Button(CTIlabel,text="OK",command=self.checkCTI).grid(row=0, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
+
+        ## Mixture Model
+
+        MODELlabel = ttk.Labelframe(master, text='Select the mixture model')
+        self.MODELvar = StringVar()
+        MODELcombo = ttk.Combobox(MODELlabel,state="readonly", textvariable=self.MODELvar ,values=["Curl","Curl Modificado","IEM/LMSE", "EIEM","Langevin","Langevin Estendido"])
         
+        MODELcombo.grid(pady=5, padx=10)
+        MODELlabel.grid(row=0,column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)       
+
+        ## Simulation time parameters
+
+        TimeLabel = ttk.Labelframe(master, text='Velocities')
+        TimeLabel.grid(row=0,column=2, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)  
+        
+        
+        Label(master,text="t_f [s] :").grid(in_=TimeLabel,row=3, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
+        self.TFstring=StringVar()
+        self.TFstring.set(0.003)
+        self.entryTF=Entry(master,textvariable=self.TFstring)
+        self.entryTF.grid(in_=TimeLabel,row=3, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+        
+        Label(master,text="dt [s] :").grid(in_=TimeLabel,row=4, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+        self.DTstring=StringVar()
+        self.DTstring.set(0.0001)
+        self.entryDT=Entry(master,textvariable=self.DTstring)
+        self.entryDT.grid(in_=TimeLabel,row=4, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
+
+
+
+
         ## Boundary Conditions
         
         
         Boundlabel = ttk.Labelframe(master, text='Boundary Conditions')
-        Boundlabel.grid(sticky=E+W,padx=5, pady=5, ipadx=5, ipady=5)
+        Boundlabel.grid(sticky=E+W,columnspan=2,padx=5, pady=5, ipadx=5, ipady=5)
 
         # Setting Composition
 
@@ -68,7 +98,7 @@ class App:
 
         Label(master,text="Select the wall :").grid(in_=Boundlabel,row=0,column=0 ,sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
         self.Boundvar = StringVar()
-        Boundcombo = ttk.Combobox(Boundlabel,state="readonly", textvariable=self.Boundvar ,values=["Wall 1", "Wall 2", "Wall 3", "Wall 4", "Wall 5", "Wall 6"])
+        Boundcombo = ttk.Combobox(Boundlabel,state="readonly", textvariable=self.Boundvar ,values=["LEFT", "RIGHT", "FRONT", "BACK", "UP", "DOWN"])
         Boundcombo.grid(row=0,column=1,pady=5, padx=10)
 
         
@@ -162,14 +192,25 @@ class App:
             for id,comp in enumerate(self.stringComposition):
                 stringComposition_temp.append(comp.get())
 
-            strin=self.Boundvar.get() 
-            self.Wall[int(strin[5])-1]['Nstring']=self.Nstring.get()
-            self.Wall[int(strin[5])-1]['Tstring']=self.Tstring.get()
-            self.Wall[int(strin[5])-1]['Ustring']=self.Ustring.get()
-            self.Wall[int(strin[5])-1]['Vstring']=self.Vstring.get()
-            self.Wall[int(strin[5])-1]['Wstring']=self.Wstring.get()
-            self.Wall[int(strin[5])-1]['WallReflect']=self.WallReflect.get()
-            self.Wall[int(strin[5])-1]['stringComposition']=stringComposition_temp
+            if self.Boundvar.get() == "LEFT":
+                strin=1
+            elif self.Boundvar.get() == "RIGHT":
+                strin=2
+            elif self.Boundvar.get() == "FRONT":
+                strin=3
+            elif self.Boundvar.get() == "BACK":
+                strin=4
+            elif self.Boundvar.get() == "UP":
+                strin=5
+            elif self.Boundvar.get() == "DOWN":
+                strin=6
+            self.Wall[strin-1]['Nstring']=self.Nstring.get()
+            self.Wall[strin-1]['Tstring']=self.Tstring.get()
+            self.Wall[strin-1]['Ustring']=self.Ustring.get()
+            self.Wall[strin-1]['Vstring']=self.Vstring.get()
+            self.Wall[strin-1]['Wstring']=self.Wstring.get()
+            self.Wall[strin-1]['WallReflect']=self.WallReflect.get()
+            self.Wall[strin-1]['stringComposition']=stringComposition_temp
 
 
         self.save.config(bg='green')
@@ -197,6 +238,9 @@ class App:
             elements+=content[index]
             index+=1
         self.elements=elements.split()
+
+        global elementos
+        elementos=self.elements
         
         self.stringComposition=[0]*len(self.elements)
         self.labelComposition=[0]*len(self.elements)
@@ -277,137 +321,7 @@ class App:
         self.start_loading()
         self.saveInput()
 
-        ###############################################################################
-        ##                       DEFINIÇÃO DOS PARÂMETROS                            ##
-        ###############################################################################
-
-
-        part_u=[]
-        filenames_3D=[]
-        filenames_comp=[]
-        filenames_CDF=[]
-        filenames_PDF=[]
-
-        frame_3D=[0,0]
-        frame_CDF=[0,0]
-        frame_comp=[0,0]
-        frame_PDF=[0,0]
-
-        t_f=.003                                      #tempo final de calculo
-        dt=.0001                                       #passo de tempo
-        div = 100                                   #divisão da variável z associada ao PDF
-        n_div = 1/div
-        d = n_div
-        k = 0                                       #contador
-
-
-        E_a=83600/9.28 #9000 #8.36 #10.45 #8.36
-        T_a=E_a/8.315 #10054.0
-        alpha = (2000.-560.)/2000. #0.7273 #6.
-        beta =(alpha*T_a)/2000. #2.0 #6.287 #17.95 #13. #10.0d0 #17.95
-        gamma=0.5*beta**2*(1.0+0.5*beta*(3.0*alpha-1.344)) 
-        PRE_EXP=(gamma*1.2*1.2)/(0.0000751*exp(-beta/alpha))
-
-
-        delta = 0.1                                 #Tamanho do filtro
-        C_omega=-2                                   #Constante arbitrária
-
-        for i_wall in range (0,6):
-            npart=int(self.Wall[i_wall]["Nstring"])
-            if npart>0:
-                for dist in np.linspace(0,1,num=20):
-                    for i in range(0,npart):
-                        intant=part_u.append()
-                        instant.u=double(self.Wall[i_wall]["Ustring"])
-                        instant.v=double(self.Wall[i_wall]["Vstring"])
-                        instant.w=double(self.Wall[i_wall]["Wstring"])
-                        instant.T=double(self.Wall[i_wall]["Nstring"])
-                        rand=random_float(0.0,0.5)
-                        if i_wall==0:
-                            instant.x=0
-                            instant.y=dist
-                            instant.z=rand
-                        elif i_wall==1:
-                            instant.x=1
-                            instant.y=dist
-                            instant.z=rand
-                        elif i_wall==2:
-                            instant.x=dist
-                            instant.y=0
-                            instant.z=dist
-                        elif i_wall==3:
-                            instant.x=dist
-                            instant.y=1
-                            instant.z=rand
-                        elif i_wall==4:
-                            instant.x=dist
-                            instant.y=rand
-                            instant.z=0
-                        elif i_wall==5:
-                            instant.x=dist
-                            instant.y=rand
-                            instant.z=1
-                        for id, element in enumerate(elementos):
-                            instant.comp[elementos[id]]=double(self.Wall[i]['stringComposition'][id])
-
-
-
-        V_avg=np.zeros(3)
-
-        ###############################################################################
-        ##                          INÍCIO DO LOOP                                   ##
-        ###############################################################################
-          
-          
-        for t in np.linspace(0,t_f,int(t_f/dt)):
-
-          #Resetando os vetores e valores necessários
-            resetLoop()
-
-          #Excluindo particulas fora do volume de controle e movendo as outras
-            updatePosition()
-
-          #Criando vetores de X, Y, Z e comp para plotagem
-            updateImage() 
-
-          #Reação Química
-            reactNow()
-
-          #Calculando a comp média
-            updateComposition()
-         
-
-        ###############################################################################
-        ##                          GERAÇÃO DOS GIFS                                 ##
-        ###############################################################################
-            
-        images=[]
-        with imageio.get_writer('OUTPUT/3D.gif', mode='I') as writer:
-           for filename in filenames_3D:
-             image = imageio.imread(filename)
-             writer.append_data(image)
-             remove(filename)
-
-        images=[]
-        with imageio.get_writer('OUTPUT/compositon.gif', mode='I') as writer:
-            for filename in filenames_comp:
-                image = imageio.imread(filename)
-                writer.append_data(image)
-                remove(filename)
-
-        images=[]
-        with imageio.get_writer('OUTPUT/PDF.gif', mode='I') as writer:
-            for filename in filenames_PDF:
-                image = imageio.imread(filename)
-                writer.append_data(image)
-                remove(filename)
-
-        images=[]
-        with imageio.get_writer('OUTPUT/CDF.gif', mode='I') as writer:
-           for filename in filenames_CDF:
-                image = imageio.imread(filename)
-                writer.append_data(image)
-                remove(filename)
+        Simulate(self.Wall,self.DTstring,self.TFstring)
 
         self.stop_loading()
 
@@ -429,58 +343,70 @@ class App:
 
 
 class part():
-  def __init__(self):
-    global elementos
-    
-    self.old_position=np.array([100,100,100])
+	def __init__(self,position,velocity,comp,T):
+	    global elementos
+	    [x,y,z]=position 
+	    [u,v,w]=velocity
+	    self.x=x
+	    self.y=y
+	    self.z=z
 
-    self.gamma=0.01
-    self.gamma_old=0.01
-    self.gamma_t=0.0
-    self.gamma_t_old=0.0
+	    self.u=u
+	    self.v=v
+	    self.w=w
 
-
-
-    self.P=101325       #[Pa]
-    self.rho=287/self.P*self.T      #[Kg/m³]
-
-    self.R_r=0
-
-    omega_te=C_omega*(self.gamma+self.gamma_t)/(delta**2)
-    for id, element in enumerate(elementos):
-        self.omega[elementos[id]]=omega_te
+	    self.T=T
+	    self.comp=comp
 
 
-    self.gas=ct.Solution('sp21re.cti')
-    self.gas.X=self.comp
-    
-  def getPosition(self):
-    return np.array([self.x,self.y,self.z])
+	    self.old_position=np.array([100,100,100])
 
-  def getOlderPosition(self):
-    return self.old_position
+	    self.gamma=0.01
+	    self.gamma_old=0.01
+	    self.gamma_t=0.0
+	    self.gamma_t_old=0.0
 
-  def getVelocity(self):
-    return np.array([self.u,self.v,self.w])
+	    self.P=101325       #[Pa]
+	    self.rho=287/self.P*self.T      #[Kg/m³]
 
-  def setPosition(self,pos):
-    self.old_position=np.array([self.x,self.y,self.z])
-    self.x=pos[0]
-    self.y=pos[1]
-    self.z=pos[2]
+	    self.R_r=0
 
-  def setVelocity(self,vel):
-    self.u=vel[0]
-    self.v=vel[1]
-    self.w=vel[2]
+	    omega_te=C_omega*(self.gamma+self.gamma_t)/(delta**2)
+	    self.omega={}
+	    for id, element in enumerate(elementos):
+	        self.omega[elementos[id]]=omega_te
 
-  def updateGamma(self,new):
-    self.gamma_old=self.gamma
-    self.gamma=new
 
-  def updateTemp(self):
-    self.T=(2000-560)*self.comp["H2O"]+560
-    self.rho=287/self.P*self.T      #[Kg/m³]
+	    self.gas=ct.Solution('CTI Files\\sp21re.cti')
+	    self.gas.X=self.comp
+
+	def getPosition(self):
+		return np.array([self.x,self.y,self.z])
+
+	def getOlderPosition(self):
+		return self.old_position
+
+	def getVelocity(self):
+		return np.array([self.u,self.v,self.w])
+
+	def setPosition(self,pos):
+	    self.old_position=np.array([self.x,self.y,self.z])
+	    self.x=pos[0]
+	    self.y=pos[1]
+	    self.z=pos[2]
+
+	def setVelocity(self,vel):
+	    self.u=vel[0]
+	    self.v=vel[1]
+	    self.w=vel[2]
+
+	def updateGamma(self,new):
+	    self.gamma_old=self.gamma
+	    self.gamma=new
+
+	def updateTemp(self):
+	    self.T=(2000-560)*self.comp["H2O"]+560
+	    self.rho=287/self.P*self.T      #[Kg/m³]
 
 
 ###############################################################################
@@ -570,85 +496,252 @@ def plot_PDF(data):
     plt.savefig(name)
     plt.close('all')
 
-def resetLoop():
-    global x,y,z,h,o,l,c_avg,p
-    x=[]
-    y=[]
-    z=[]
-    h=[]
-    o=[]
-    p=[]
-    l=0
-    V_avg=np.array([0,0,0])
-    c_avg={'H2':0,'O2':0, 'O':0,    'OH':0,   'H2O':0,  'H':0,    'HO2':0,  'CO':0,   'CO2':0,  'HCO':0,  'N2':0}
+def Simulate(Wall,DT,TF):
 
-def updatePosition():
-    global part_u, l
-    for id,part_i in enumerate(part_u):
-        if (part_i.x >1) or (part_i.x <0):
-            del(part_u[id - l])
-            l += 1
-        else:
-            dW=1/((2*np.pi*dt)**(1/2))*( exp(-(t+dt)**2    /(2*dt))   -   exp(-(t)**2     /(2*dt))  )
-            A=(V_avg + (part_i.gamma+part_i.gamma_t-part_i.gamma_old+part_i.gamma_t_old)/(part_i.getPosition()-part_i.getOlderPosition()) ) 
-            B=(2*(part_i.gamma + part_i.gamma_t))**(1/2)
-            
-            part_i.setPosition( part_i.getPosition()+A * dt + B * dW   )
+        global frame_3D,frame_CDF,frame_comp,frame_PDF,filenames_3D,filenames_comp,filenames_CDF,filenames_PDF,t,npart
 
-def updateComposition():
-    global part_u, l,npart,c_avg,V_avg
-    npart=len(part_u)
-    for id, part_i in enumerate(part_u):
-      V_avg+=part_i.getVelocity()
-      for element in species:
-        c_avg[element]+=part_i.comp[element]
-        
-    for element in species:
-      c_avg[element] = c_avg[element]/npart
+        part_u=[]
+        filenames_3D=[]
+        filenames_comp=[]
+        filenames_CDF=[]
+        filenames_PDF=[]
 
-    V_avg=V_avg/npart
-    
-    for id,part_i in enumerate(part_u):
-      for element in species:
-        #gama[element]=part_i.gas.mix_diff_coeffs[part_i.gas.species_index(element)]*part_i.gas.density
-        part_i.updateGamma(part_i.gas.viscosity)
-        part_i.omega[element] = C_omega*(part_i.gamma+part_i.gamma_t)/(delta**2)
-        
-    for id, part_i in enumerate(part_u):
-      for element in range(0,part_i.gas.n_species):
-         name=part_i.gas.species_name(element)
-         part_i.comp[name] += ( (part_i.omega[name] * (part_i.comp[name]-c_avg[name])) + part_i.R_r ) * dt
-         if part_i.comp[name]>1:
-           part_i.comp[name]=1
-         part_i.updateTemp()
+        frame_3D=[0,0]
+        frame_CDF=[0,0]
+        frame_comp=[0,0]
+        frame_PDF=[0,0]
 
-def updateImage():
-    global x,y,z,h,o,part_u,p
-    #Plotando e salvando imagens
-    if True:
-        for id,part_i in enumerate(part_u):
-            x.append(part_i.x)
-            y.append(part_i.y)
-            z.append(part_i.z)
-            p.append(part_i.comp['H2O'])
-        plot_3D(x,y,z,p)
-        plot_comp(z,p)
-        plot_PDF(p)
+        dt=float(DT.get())          #Passo de Tempo
+        t_f=float(TF.get())         #Tempo final
 
-def reactNow():
-  global part_u
-  for id, part_i in enumerate(part_u):
-      for element in part_i.gas.species_names:
-          R_p=( 1.0 - part_i.comp[element] ) * exp( - (beta * ( 1.0 - part_i.comp[element] ) ) / ( 1.0 - alpha * ( 1.0 - part_i.comp[element] ) ) )
-          part_i.R_r=PRE_EXP*R_p
+
+
+        for i_wall in range (0,6):
+            npart=int(Wall[i_wall]["Nstring"])
+            if npart>0:
+                for dist in np.linspace(0,1,num=npart):
+                    u=float(Wall[i_wall]["Ustring"])
+                    v=float(Wall[i_wall]["Vstring"])
+                    w=float(Wall[i_wall]["Wstring"])
+                    T=float(Wall[i_wall]["Tstring"])
+                    rand=random()
+                    if i_wall==0:
+                        x=0
+                        y=dist
+                        z=rand
+                    elif i_wall==1:
+                        x=1
+                        y=dist
+                        z=rand
+                    elif i_wall==2:
+                        x=dist
+                        y=0
+                        z=dist
+                    elif i_wall==3:
+                        x=dist
+                        y=1
+                        z=rand
+                    elif i_wall==4:
+                        x=dist
+                        y=rand
+                        z=0
+                    elif i_wall==5:
+                        x=dist
+                        y=rand
+                        z=1
+                    comp={}
+                    for id, element in enumerate(elementos):
+                        comp[element]=float(Wall[i_wall]['stringComposition'][id])
+
+                    part_u.append(part([x,y,z],[u,v,w],comp,T))
+
+
+
+        V_avg=np.zeros(3)
+
+        ###############################################################################
+        ##                          INÍCIO DO LOOP                                   ##
+        ###############################################################################
           
+          
+        for t in np.linspace(0,t_f,int(t_f/dt)):
+
+          #Resetando os vetores e valores necessários
+            x=[]
+            y=[]
+            z=[]
+            h=[]
+            o=[]
+            p=[]
+            l=0
+            V_avg=np.array([.0,.0,.0])
+            c_avg={}
+            for id, element in enumerate(elementos):
+                c_avg[element]=0
+
+          #Excluindo particulas fora do volume de controle e movendo as outras
+
+            npart=len(part_u)
+            for id, part_i in enumerate(part_u):
+              V_avg+=part_i.getVelocity()
+            V_avg=V_avg/npart
+            for id,part_i in enumerate(part_u):
+                if (part_i.x >1) or (part_i.x <0) or (part_i.y >1) or (part_i.y <0) or (part_i.z >1) or (part_i.z <0):
+                    del(part_u[id - l])
+                    l += 1
+                else:
+                    dW=1/((2*np.pi*dt)**(1/2))*( exp(-(t+dt)**2    /(2*dt))   -   exp(-(t)**2     /(2*dt))  )
+                    A=(part_i.getVelocity() + (part_i.gamma+part_i.gamma_t-part_i.gamma_old+part_i.gamma_t_old)/(part_i.getPosition()-part_i.getOlderPosition()) ) 
+                    B=(2*(part_i.gamma + part_i.gamma_t))**(1/2)
+                    
+                    part_i.setPosition( part_i.getPosition()+A * dt + B * dW   )
+
+          #Criando vetores de X, Y, Z e comp para plotagem
+            if True:
+                for id,part_i in enumerate(part_u):
+                    x.append(part_i.x)
+                    y.append(part_i.y)
+                    z.append(part_i.z)
+                    p.append(part_i.comp['H2O'])
+                #Plotando e salvando imagens
+                plot_3D(x,y,z,p)
+                plot_comp(z,p)
+                plot_PDF(p)
+
+          #Reação Química
+            for id, part_i in enumerate(part_u):
+                for element in part_i.gas.species_names:
+                    R_p=( 1.0 - part_i.comp[element] ) * exp( - (beta * ( 1.0 - part_i.comp[element] ) ) / ( 1.0 - alpha * ( 1.0 - part_i.comp[element] ) ) )
+                    part_i.R_r=PRE_EXP*R_p
+
+          #Calculando a comp média
+            npart=len(part_u)
+            for id, part_i in enumerate(part_u):
+              for element in elementos:
+                c_avg[element]+=part_i.comp[element]
+                
+            for element in elementos:
+              c_avg[element] = c_avg[element]/npart
+
+            
+            for id,part_i in enumerate(part_u):
+              for element in elementos:
+                #gama[element]=part_i.gas.mix_diff_coeffs[part_i.gas.species_index(element)]*part_i.gas.density
+                part_i.updateGamma(part_i.gas.viscosity)
+                part_i.omega[element] = C_omega*(part_i.gamma+part_i.gamma_t)/(delta**2)
+                
+            for id, part_i in enumerate(part_u):
+              for element in range(0,part_i.gas.n_species):
+                 name=part_i.gas.species_name(element)
+                 part_i.comp[name] += ( (part_i.omega[name] * (part_i.comp[name]-c_avg[name])) + part_i.R_r ) * dt
+                 if part_i.comp[name]>1:
+                   part_i.comp[name]=1
+                 part_i.updateTemp()
+
+
+            for i_wall in range (0,6):
+                npart=int(Wall[i_wall]["Nstring"])
+                if npart>0:
+                    for dist in np.linspace(0,1,num=npart):
+                        u=float(Wall[i_wall]["Ustring"])
+                        v=float(Wall[i_wall]["Vstring"])
+                        w=float(Wall[i_wall]["Wstring"])
+                        T=float(Wall[i_wall]["Tstring"])
+                        rand=random()
+                        if i_wall==0:
+                            x=0
+                            y=dist
+                            z=rand
+                        elif i_wall==1:
+                            x=1
+                            y=dist
+                            z=rand
+                        elif i_wall==2:
+                            x=dist
+                            y=0
+                            z=dist
+                        elif i_wall==3:
+                            x=dist
+                            y=1
+                            z=rand
+                        elif i_wall==4:
+                            x=dist
+                            y=rand
+                            z=0
+                        elif i_wall==5:
+                            x=dist
+                            y=rand
+                            z=1
+                        comp={}
+                        for id, element in enumerate(elementos):
+                            comp[element]=float(Wall[i_wall]['stringComposition'][id])
+
+                        part_u.append(part([x,y,z],[u,v,w],comp,T))
+
+         
+
+        ###############################################################################
+        ##                          GERAÇÃO DOS GIFS                                 ##
+        ###############################################################################
+            
+        images=[]
+        with imageio.get_writer('OUTPUT/3D.gif', mode='I') as writer:
+           for filename in filenames_3D:
+             image = imageio.imread(filename)
+             writer.append_data(image)
+             remove(filename)
+
+        images=[]
+        with imageio.get_writer('OUTPUT/compositon.gif', mode='I') as writer:
+            for filename in filenames_comp:
+                image = imageio.imread(filename)
+                writer.append_data(image)
+                remove(filename)
+
+        images=[]
+        with imageio.get_writer('OUTPUT/PDF.gif', mode='I') as writer:
+            for filename in filenames_PDF:
+                image = imageio.imread(filename)
+                writer.append_data(image)
+                remove(filename)
+
+        images=[]
+        with imageio.get_writer('OUTPUT/CDF.gif', mode='I') as writer:
+           for filename in filenames_CDF:
+                image = imageio.imread(filename)
+                writer.append_data(image)
+                remove(filename)
+
+
+###############################################################################
+##                     DEFININDO CONSTANTES E PARÂMETROS                     ##
+###############################################################################
+
+global div,n_div,d,k,E_a,T_a,E_a,alpha,beta,gamma,PRE_EXP,delta,C_omega
+      
+div = 100                                   #divisão da variável z associada ao PDF
+n_div = 1/div
+d = n_div
+k = 0                                       #contador
+
+
+E_a=83600/9.28 #9000 #8.36 #10.45 #8.36
+T_a=E_a/8.315 #10054.0
+alpha = (2000.-560.)/2000. #0.7273 #6.
+beta =(alpha*T_a)/2000. #2.0 #6.287 #17.95 #13. #10.0d0 #17.95
+gamma=0.5*beta**2*(1.0+0.5*beta*(3.0*alpha-1.344)) 
+PRE_EXP=(gamma*1.2*1.2)/(0.0000751*exp(-beta/alpha))
+
+
+delta = 0.1                                 #Tamanho do filtro
+C_omega=-2                                   #Constante arbitrária    
 
 ###############################################################################
 ##                       ÍNICIO DA INTERFACE GRÁFICA                         ##
 ###############################################################################
 
 
-root = Tk(className=" CHARMANDER : beta version")
+root = Tk(className=" CHARMANDER : beta version")   
 root.iconbitmap('icon.ico')
 
 
