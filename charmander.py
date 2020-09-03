@@ -12,7 +12,6 @@ class App:
 
         self.elements=[]
 
-
         CTIlabel = ttk.Labelframe(master, text='Select the .CTI file')
         self.CTIvar = StringVar()
         CTIcombo = ttk.Combobox(CTIlabel,state="readonly", textvariable=self.CTIvar ,values=["GRI Mech 3.0", "SP21RE"])
@@ -36,7 +35,7 @@ class App:
 
         BigFrame.grid(column=2,row=0,sticky=W+N,rowspan=30)
 
-        self.canvas = Canvas(BigFrame, width=200, height=350)
+        self.canvas = Canvas(BigFrame, width=200, height=500)
         self.CompositionLabel = ttk.Labelframe(self.canvas, text='Compositions')
         sbar = Scrollbar(BigFrame, orient="vertical", command=self.canvas.yview)
         
@@ -54,18 +53,17 @@ class App:
         # Select Wall
 
         Label(master,text="Select the wall :").grid(in_=Boundlabel,row=0,column=0 ,sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
-        Boundvar = StringVar()
-        Boundcombo = ttk.Combobox(Boundlabel,state="readonly", textvariable=Boundvar ,values=["Wall 1", "Wall 2", "Wall 3", "Wall 4", "Wall 5", "Wall 6"])
+        self.Boundvar = StringVar()
+        Boundcombo = ttk.Combobox(Boundlabel,state="readonly", textvariable=self.Boundvar ,values=["Wall 1", "Wall 2", "Wall 3", "Wall 4", "Wall 5", "Wall 6"])
         Boundcombo.grid(row=0,column=1,pady=5, padx=10)
 
         
         
         # Create particles here?
-
-        self.statePart=IntVar()
+        
         
         self.createPart = IntVar()
-        self.checkIn=Checkbutton(Boundlabel, text="Generate particles in this Wall?",variable=self.statePart,command=self.checkenable)
+        self.checkIn=Checkbutton(Boundlabel, text="Generate particles in this Wall?",variable=self.createPart,command=self.checkenable)
         self.checkIn.grid(sticky=W,row=1,columnspan=2)
 
 
@@ -118,19 +116,85 @@ class App:
         self.WallReflect = IntVar()
         Checkbutton(Boundlabel, text="Reflects?", variable=self.WallReflect).grid(row=5, sticky=W,columnspan=2)
 
+        # Save Wall
+        
+        self.save=Button(Boundlabel,text="Save Wall",command=self.saveWall)
+        self.save.grid(row=6, columnspan=2, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
+        
+
 
 
         ## Plot Configure
 
         ## Run
         
-        self.run=Button(master,text="Run",command=running)
+        self.run=Button(master,text="Run",command=self.running)
         self.run.grid(row=0, column=3, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
         
 
         
 
+    def saveWall(self):
 
+        if self.createPart.get()==1:
+            stringComposition_temp=[]
+
+            for id,comp in enumerate(self.stringComposition):
+                stringComposition_temp.append(comp.get())
+
+                           
+            if self.Boundvar.get()=="Wall 1":
+                self.Wall_1['Nstring']=self.Nstring.get()
+                self.Wall_1['Tstring']=self.Tstring.get()
+                self.Wall_1['Ustring']=self.Ustring.get()
+                self.Wall_1['Vstring']=self.Vstring.get()
+                self.Wall_1['Wstring']=self.Wstring.get()
+                self.Wall_1['WallReflect']=self.WallReflect.get()
+                self.Wall_1['stringComposition']=stringComposition_temp
+            elif self.Boundvar.get()=="Wall 2":
+                self.Wall_2['Nstring']=self.Nstring.get()
+                self.Wall_2['Tstring']=self.Tstring.get()
+                self.Wall_2['Ustring']=self.Ustring.get()
+                self.Wall_2['Vstring']=self.Vstring.get()
+                self.Wall_2['Wstring']=self.Wstring.get()
+                self.Wall_2['WallReflect']=self.WallReflect.get()
+                self.Wall_2['stringComposition']=stringComposition_temp
+            elif self.Boundvar.get()=="Wall 3":
+                self.Wall_3['Nstring']=self.Nstring.get()
+                self.Wall_3['Tstring']=self.Tstring.get()
+                self.Wall_3['Ustring']=self.Ustring.get()
+                self.Wall_3['Vstring']=self.Vstring.get()
+                self.Wall_3['Wstring']=self.Wstring.get()
+                self.Wall_3['WallReflect']=self.WallReflect.get()
+                self.Wall_3['stringComposition']=stringComposition_temp
+            elif self.Boundvar.get()=="Wall 4":
+                self.Wall_4['Nstring']=self.Nstring.get()
+                self.Wall_4['Tstring']=self.Tstring.get()
+                self.Wall_4['Ustring']=self.Ustring.get()
+                self.Wall_4['Vstring']=self.Vstring.get()
+                self.Wall_4['Wstring']=self.Wstring.get()
+                self.Wall_4['WallReflect']=self.WallReflect.get()
+                self.Wall_4['stringComposition']=stringComposition_temp
+            elif self.Boundvar.get()=="Wall 5":
+                self.Wall_5['Nstring']=self.Nstring.get()
+                self.Wall_5['Tstring']=self.Tstring.get()
+                self.Wall_5['Ustring']=self.Ustring.get()
+                self.Wall_5['Vstring']=self.Vstring.get()
+                self.Wall_5['Wstring']=self.Wstring.get()
+                self.Wall_5['WallReflect']=self.WallReflect.get()
+                self.Wall_5['stringComposition']=stringComposition_temp
+            elif self.Boundvar.get()=="Wall 6":
+                self.Wall_6['Nstring']=self.Nstring.get()
+                self.Wall_6['Tstring']=self.Tstring.get()
+                self.Wall_6['Ustring']=self.Ustring.get()
+                self.Wall_6['Vstring']=self.Vstring.get()
+                self.Wall_6['Wstring']=self.Wstring.get()
+                self.Wall_6['WallReflect']=self.WallReflect.get()
+                self.Wall_6['stringComposition']=stringComposition_temp
+
+
+        self.save.config(bg='green')
+            
     def checkCTI(self):
 
 
@@ -168,6 +232,16 @@ class App:
             self.entryComposition[id]=Entry(self.CompositionLabel,textvariable=self.stringComposition[id],state='disabled')
             self.entryComposition[id].grid(row=id, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
         self.checkenable()
+
+        self.Wall_1={'Nstring':'','Tstring':'','Ustring':'','Vstring':'','Wstring':'','stringComposition':[0]*len(self.elements),'WallReflect':0}
+        self.Wall_2={'Nstring':'','Tstring':'','Ustring':'','Vstring':'','Wstring':'','stringComposition':[0]*len(self.elements),'WallReflect':0}
+        self.Wall_3={'Nstring':'','Tstring':'','Ustring':'','Vstring':'','Wstring':'','stringComposition':[0]*len(self.elements),'WallReflect':0}
+        self.Wall_4={'Nstring':'','Tstring':'','Ustring':'','Vstring':'','Wstring':'','stringComposition':[0]*len(self.elements),'WallReflect':0}
+        self.Wall_5={'Nstring':'','Tstring':'','Ustring':'','Vstring':'','Wstring':'','stringComposition':[0]*len(self.elements),'WallReflect':0}
+        self.Wall_6={'Nstring':'','Tstring':'','Ustring':'','Vstring':'','Wstring':'','stringComposition':[0]*len(self.elements),'WallReflect':0}
+        self.save.config(bg='red')
+
+
         
 
 
@@ -175,7 +249,7 @@ class App:
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
     def checkenable(self):
-        if (self.statePart.get()==0):
+        if (self.createPart.get()==0):
             self.entryT.configure(state='disabled')
             self.entryN.configure(state='disabled')
             self.entryU.configure(state='disabled')
@@ -197,22 +271,96 @@ class App:
 
         
 
-def running():
-    finish_file="complete.gif"
-    animation = pyglet.resource.animation(finish_file)
-    sprite = pyglet.sprite.Sprite(animation)
-    # create a window and set it to the image size
-    win = pyglet.window.Window(width=sprite.width, height=sprite.height)
-    # set window background color = r, g, b, alpha
-    # each value goes from 0.0 to 1.0
-    green = 0, 1, 0, 1
-    pyglet.gl.glClearColor(*green)
+    def running(self):
+        finish_file="complete.gif"
+        animation = pyglet.resource.animation(finish_file)
+        sprite = pyglet.sprite.Sprite(animation)
+        # create a window and set it to the image size
+        win = pyglet.window.Window(width=sprite.width, height=sprite.height)
+        # set window background color = r, g, b, alpha
+        # each value goes from 0.0 to 1.0
+        green = 0, 1, 0, 1
+        pyglet.gl.glClearColor(*green)
 
-    @win.event
-    def on_draw():
-        win.clear()
-        sprite.draw()
-    pyglet.app.run()
+        @win.event
+        def on_draw():
+            win.clear()
+            sprite.draw()
+        pyglet.app.run()
+
+
+        print("The conditions set are available in the file setup.txt in the folder OUTPUT")
+        setup=open("OUTPUT\setup.txt",'w')
+        setup.write("\n \n Wall 1 \n \n")
+        setup.write("\n N:"+self.Wall_1['Nstring'])
+        setup.write("\n T:"+self.Wall_1['Tstring'])
+        setup.write("\n U:"+self.Wall_1['Ustring'])
+        setup.write("\n V:"+self.Wall_1['Vstring'])
+        setup.write("\n W:"+self.Wall_1['Wstring'])
+        setup.write("\n Wall Reflect:"+str(self.Wall_1['WallReflect']))
+        setup.write("\n Composition: \n")
+        for id, element in enumerate(self.elements):
+            setup.write(element+":"+str(self.Wall_1['stringComposition'][id]) + '\n')
+        
+        setup.write("\n \n Wall 2 \n \n")
+        setup.write("\n N:"+self.Wall_2['Nstring'])
+        setup.write("\n T:"+self.Wall_2['Tstring'])
+        setup.write("\n U:"+self.Wall_2['Ustring'])
+        setup.write("\n V:"+self.Wall_2['Vstring'])
+        setup.write("\n W:"+self.Wall_2['Wstring'])
+        setup.write("\n Wall Reflect:"+str(self.Wall_2['WallReflect']))
+        setup.write("\n Composition: \n")
+        for id, element in enumerate(self.elements):
+            setup.write(element+":"+str(self.Wall_2['stringComposition'][id]) + '\n')
+            
+            
+        setup.write("\n \n Wall 3 \n \n")
+        setup.write("\n N:"+self.Wall_3['Nstring'])
+        setup.write("\n T:"+self.Wall_3['Tstring'])
+        setup.write("\n U:"+self.Wall_3['Ustring'])
+        setup.write("\n V:"+self.Wall_3['Vstring'])
+        setup.write("\n W:"+self.Wall_3['Wstring'])
+        setup.write("\n Wall Reflect:"+str(self.Wall_3['WallReflect']))
+        setup.write("\n Composition: \n")
+        for id, element in enumerate(self.elements):
+            setup.write(element+":"+str(self.Wall_3['stringComposition'][id]) + '\n')
+
+        
+        setup.write("\n \n Wall 4 \n \n ")
+        setup.write("\n N:"+self.Wall_4['Nstring'])
+        setup.write("\n T:"+self.Wall_4['Tstring'])
+        setup.write("\n U:"+self.Wall_4['Ustring'])
+        setup.write("\n V:"+self.Wall_4['Vstring'])
+        setup.write("\n W:"+self.Wall_4['Wstring'])
+        setup.write("\n Wall Reflect:"+str(self.Wall_4['WallReflect']))
+        setup.write("\n Composition: \n")
+        for id, element in enumerate(self.elements):
+            setup.write(element+":"+str(self.Wall_4['stringComposition'][id]) + '\n')
+        
+        setup.write("\n \n Wall 5 \n \n")
+        setup.write("\n N:"+self.Wall_5['Nstring'])
+        setup.write("\n T:"+self.Wall_5['Tstring'])
+        setup.write("\n U:"+self.Wall_5['Ustring'])
+        setup.write("\n V:"+self.Wall_5['Vstring'])
+        setup.write("\n W:"+self.Wall_5['Wstring'])
+        setup.write("\n Wall Reflect:"+str(self.Wall_5['WallReflect']))
+        setup.write("\n Composition: \n")
+        for id, element in enumerate(self.elements):
+            setup.write(element+":"+str(self.Wall_5['stringComposition'][id]) + '\n')
+        
+        setup.write("\n \n Wall 6 \n \n ")
+        setup.write("\n N:"+self.Wall_6['Nstring'])
+        setup.write("\n T:"+self.Wall_6['Tstring'])
+        setup.write("\n U:"+self.Wall_6['Ustring'])
+        setup.write("\n V:"+self.Wall_6['Vstring'])
+        setup.write("\n W:"+self.Wall_6['Wstring'])
+        setup.write("\n Wall Reflect:"+str(self.Wall_6['WallReflect']))
+        setup.write("\n Composition: \n")
+        for id, element in enumerate(self.elements):
+            setup.write(element+":"+str(self.Wall_6['stringComposition'][id]) + '\n')
+
+        setup.close()
+
 
 
 
