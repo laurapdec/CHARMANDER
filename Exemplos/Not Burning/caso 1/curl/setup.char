@@ -1,0 +1,141 @@
+CTI Files\sp21re.cti
+Curl
+0.5 2 0.5
+
+ 
+ Wall 1 
+ 
+ 
+ N:20
+ T:560
+ U:200
+ V:0
+ W:0
+ Wall Reflect:0
+ Composition: 
+H2:1.0
+O2:0.0
+O:0.0
+OH:0.0
+H2O:0.0
+H:0.0
+HO2:0.0
+CO:0.0
+CO2:0.0
+HCO:0.0
+N2:0.0
+
+ 
+ Wall 2 
+ 
+ 
+ N:0
+ T:0
+ U:0
+ V:0
+ W:0
+ Wall Reflect:0
+ Composition: 
+H2:0.0
+O2:0.0
+O:0.0
+OH:0.0
+H2O:0.0
+H:0.0
+HO2:0.0
+CO:0.0
+CO2:0.0
+HCO:0.0
+N2:0.0
+
+ 
+ Wall 3 
+ 
+ 
+ N:0
+ T:0
+ U:0
+ V:0
+ W:0
+ Wall Reflect:0
+ Composition: 
+H2:0.0
+O2:0.0
+O:0.0
+OH:0.0
+H2O:0.0
+H:0.0
+HO2:0.0
+CO:0.0
+CO2:0.0
+HCO:0.0
+N2:0.0
+
+ 
+ Wall 4 
+ 
+ 
+ N:0
+ T:0
+ U:0
+ V:0
+ W:0
+ Wall Reflect:0
+ Composition: 
+H2:0.0
+O2:0.0
+O:0.0
+OH:0.0
+H2O:0.0
+H:0.0
+HO2:0.0
+CO:0.0
+CO2:0.0
+HCO:0.0
+N2:0.0
+
+ 
+ Wall 5 
+ 
+ 
+ N:0
+ T:0
+ U:0
+ V:0
+ W:0
+ Wall Reflect:0
+ Composition: 
+H2:0.0
+O2:0.0
+O:0.0
+OH:0.0
+H2O:0.0
+H:0.0
+HO2:0.0
+CO:0.0
+CO2:0.0
+HCO:0.0
+N2:0.0
+
+ 
+ Wall 6 
+ 
+ 
+ N:20
+ T:2000
+ U:0
+ V:0
+ W:-200
+ Wall Reflect:0
+ Composition: 
+H2:0.0
+O2:0.0
+O:0.0
+OH:0.0
+H2O:1.0
+H:0.0
+HO2:0.0
+CO:0.0
+CO2:0.0
+HCO:0.0
+N2:0.0

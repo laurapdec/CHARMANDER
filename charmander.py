@@ -715,7 +715,7 @@ class part():
 		self.gas=ct.Solution(ap.solution_input[0],ap.solution_input[1])
 
 		self.gas.TPX=self.T,self.P,self.comp
-		self.Xco=self.comp["CH4"]	
+#		self.Xco=self.comp["CH4"]	
 
 
 	def getPosition(self):
@@ -1069,14 +1069,14 @@ def Simulate(Wall,Param,DT,TF,Model,React,PlotConfiguration):
 		for filename in filenames_PDF:
 			image = imageio.imread(filename)
 			writer.append_data(image)
-			remove(filename)
+			#remove(filename)
 
 	images=[]
 	with imageio.get_writer('OUTPUT/CDF.gif', mode='I') as writer:
 		for filename in filenames_CDF:
 			image = imageio.imread(filename)
 			writer.append_data(image)
-			remove(filename)
+			#remove(filename)
 
 
 ###############################################################################
