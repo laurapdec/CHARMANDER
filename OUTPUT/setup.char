@@ -6,14 +6,15 @@ IEM/LMSE
  Wall 1 
  
  
- N:20
- T:560
- U:200
+ GenDt:0
+ N:0
+ T:0
+ U:0
  V:0
  W:0
  Wall Reflect:0
  Composition: 
-H2:1.0
+H2:0.0
 O2:0.0
 O:0.0
 OH:0.0
@@ -29,6 +30,7 @@ N2:0.0
  Wall 2 
  
  
+ GenDt:0
  N:0
  T:0
  U:0
@@ -52,6 +54,7 @@ N2:0.0
  Wall 3 
  
  
+ GenDt:0
  N:0
  T:0
  U:0
@@ -75,6 +78,7 @@ N2:0.0
  Wall 4 
  
  
+ GenDt:0
  N:0
  T:0
  U:0
@@ -98,6 +102,7 @@ N2:0.0
  Wall 5 
  
  
+ GenDt:0
  N:0
  T:0
  U:0
@@ -121,18 +126,91 @@ N2:0.0
  Wall 6 
  
  
- N:20
- T:2000
+ GenDt:0
+ N:0
+ T:0
  U:0
  V:0
- W:-200
+ W:0
  Wall Reflect:0
  Composition: 
 H2:0.0
 O2:0.0
 O:0.0
 OH:0.0
-H2O:1.0
+H2O:0.0
+H:0.0
+HO2:0.0
+CO:0.0
+CO2:0.0
+HCO:0.0
+N2:0.0
+
+ 
+ Wall 7 
+ 
+ 
+ GenDt:0
+ N:500
+ T:3000
+ U:0
+ V:0
+ W:0
+ Wall Reflect:0
+ Composition: 
+H2:0.0
+O2:0.67
+O:0.0
+OH:0.0
+H2O:0.0
+H:0.0
+HO2:0.0
+CO:0.33
+CO2:0.0
+HCO:0.0
+N2:0.0
+
+ 
+ Wall 8 
+ 
+ 
+ GenDt:0
+ N:0
+ T:0
+ U:0
+ V:0
+ W:0
+ Wall Reflect:0
+ Composition: 
+H2:0.0
+O2:0.0
+O:0.0
+OH:0.0
+H2O:0.0
+H:0.0
+HO2:0.0
+CO:0.0
+CO2:0.0
+HCO:0.0
+N2:0.0
+
+ 
+ Wall 9 
+ 
+ 
+ GenDt:0
+ N:0
+ T:0
+ U:0
+ V:0
+ W:0
+ Wall Reflect:0
+ Composition: 
+H2:0.0
+O2:0.0
+O:0.0
+OH:0.0
+H2O:0.0
 H:0.0
 HO2:0.0
 CO:0.0
