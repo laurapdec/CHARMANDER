@@ -4,6 +4,7 @@ import numpy as np
 from tkinter import *
 import pyglet
 from tkinter import ttk,filedialog
+from PIL import ImageTk,Image
 import imageio
 import random
 import cantera as ct
@@ -13,12 +14,14 @@ from numpy.random import random
 from random import randint
 from math import exp
 import subprocess
+import threading
+import queue as Queue
+import time
 
 
 ###############################################################################
 ##                         CLASSE INTERFACE GRÁFICA                          ##
 ###############################################################################
-
 
 class App:
     def __init__(self,master):
@@ -27,20 +30,33 @@ class App:
 
         self.elements=[]
 
+        self.style = ttk.Style(master)
+
+        self.style.theme_use('xpnative')
         menu=Menu(master)
         menu.add_command(label="Import",command=self.import_)
         menu.add_command(label="Help",command=self.help)
+
+        subMenu = Menu(menu, tearoff=False)
+        menu.add_cascade(label='Theme', menu=subMenu) 
+        subMenu.add_command(label="White",command=self.whiteTheme)
+        subMenu.add_command(label="Dark",command=self.darkTheme)
         master.config(menu=menu)
+
+        
+
+
 
         CTIlabel = ttk.Labelframe(master, text='Select the .CTI file')
         self.CTIvar = StringVar()
-        CTIcombo = ttk.Combobox(CTIlabel,state="readonly", textvariable=self.CTIvar ,values=["GRI Mech 3.0", "SP21RE"])
+        CTIcombo = ttk.Combobox(CTIlabel,state="readonly", textvariable=self.CTIvar ,values=["GRI Mech 3.0", "SP21RE","Local file"])
         
         CTIcombo.grid(pady=5, padx=10)
         CTIlabel.grid(row=0, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)       
 
+        CTIcombo.bind('<<ComboboxSelected>>', self.checkCTI)
+    
 
-        Button(CTIlabel,text="OK",command=self.checkCTI).grid(row=0, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
 
         ## Mixture Model
 
@@ -49,37 +65,39 @@ class App:
         MODELcombo = ttk.Combobox(MODELlabel,state="readonly", textvariable=self.MODELvar ,values=["Curl","Curl Modificado","IEM/LMSE", "EIEM","Langevin","Langevin Estendido"])
         self.MODELvar.set("IEM/LMSE")
         MODELcombo.grid(pady=5, padx=10)
-        MODELlabel.grid(row=0,column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)       
+        MODELlabel.grid(row=0,column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)  
+
+        MODELcombo.bind('<<ComboboxSelected>>', self.checkMODEL)     
 
         ## Parameters
 
         ParamLabel = ttk.Labelframe(master, text='Parameters')
-        ParamLabel.grid(row=1,column=2, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)  
+        ParamLabel.grid(row=0,column=2, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)  
         
         
         Label(master,text="\u03b1:").grid(in_=ParamLabel,row=0, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
         self.Alphastring=StringVar()
         self.Alphastring.set(0.5)
-        self.entryAlpha=Entry(master,textvariable=self.Alphastring)
+        self.entryAlpha=Entry(master,textvariable=self.Alphastring,state='disabled')
         self.entryAlpha.grid(in_=ParamLabel,row=0, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
         
         Label(master,text="C\u03c9 :").grid(in_=ParamLabel,row=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
         self.Cwstring=StringVar()
         self.Cwstring.set(2)
-        self.entryCw=Entry(master,textvariable=self.Cwstring)
+        self.entryCw=Entry(master,textvariable=self.Cwstring,state='disabled')
         self.entryCw.grid(in_=ParamLabel,row=1, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
 
         Label(master,text="d0 :").grid(in_=ParamLabel,row=2, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
         self.D0string=StringVar()
         self.D0string.set(0.5)
-        self.entryD0=Entry(master,textvariable=self.D0string)
+        self.entryD0=Entry(master,textvariable=self.D0string,state='disabled')
         self.entryD0.grid(in_=ParamLabel,row=2, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
 
         self.Param=[self.Alphastring,self.Cwstring,self.D0string]
         ## Simulation time parameters
 
         TimeLabel = ttk.Labelframe(master, text='Time settings')
-        TimeLabel.grid(row=0,column=2, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)  
+        TimeLabel.grid(row=0,column=3, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)  
         
         
         Label(master,text="t_f [s] :").grid(in_=TimeLabel,row=0, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
@@ -101,23 +119,24 @@ class App:
         
         
         Boundlabel = ttk.Labelframe(master, text='Boundary Conditions')
-        Boundlabel.grid(sticky=E+W,row=1,columnspan=2,rowspan=3,padx=5, pady=5, ipadx=5, ipady=5)
+        Boundlabel.grid(sticky=E+W,row=1,columnspan=4,rowspan=3,padx=5, pady=5, ipadx=5, ipady=5)
+
 
         # Setting Composition
 
 
         BigFrame=Frame(Boundlabel)
 
-        BigFrame.grid(column=2,row=0,sticky=W+N,rowspan=30)
+        BigFrame.grid(column=3,row=0,sticky=W+N,rowspan=30)
 
-        self.canvas = Canvas(BigFrame, width=200, height=500)
+        self.canvas = Canvas(self.master, width=200, height=500,bd=0,highlightthickness=0, relief='ridge')
         self.CompositionLabel = ttk.Labelframe(self.canvas, text='Compositions')
-        sbar = Scrollbar(BigFrame, orient="vertical", command=self.canvas.yview)
+        sbar = Scrollbar(self.master, orient="vertical", command=self.canvas.yview)
         
         self.canvas.config(yscrollcommand=sbar.set)
 
-        self.canvas.pack(side="left")
-        sbar.pack(side="left", fill="y")
+        self.canvas.pack(in_=BigFrame,side="left")
+        sbar.pack(in_=BigFrame,side="left", fill="y")
         self.canvas.create_window((2,2), window=self.CompositionLabel, anchor="nw",  tags="self.CompositionLabel")        
         
         self.CompositionLabel.bind("<Configure>", self.onFrameConfigure)
@@ -132,30 +151,42 @@ class App:
         Boundcombo = ttk.Combobox(Boundlabel,state="readonly", textvariable=self.Boundvar ,values=["LEFT", "RIGHT", "FRONT", "BACK", "UP", "DOWN"])
         Boundcombo.grid(row=0,column=1,pady=5, padx=10)
 
+        self.Boundvar.set("LEFT")
         
-        
+        Boundcombo.bind('<<ComboboxSelected>>', self.newWall)
+
+        #Image of wall
+
+        self.ImgPath = StringVar()
+        self.ImgPath.set( "wall/LEFT.png")
+        self.WallImg = ImageTk.PhotoImage(Image.open(self.ImgPath.get()))
+
+        self.Imglabel = Label(image=self.WallImg)
+        self.Imglabel.img = self.WallImg # this line need to prevent gc
+        self.Imglabel.grid(in_=Boundlabel,row=0,column=2)
+
         # Create particles here?
         
         
         self.createPart = IntVar()
-        self.checkIn=Checkbutton(Boundlabel, text="Generate particles in this Wall?",variable=self.createPart,command=self.checkenable)
-        self.checkIn.grid(sticky=W,row=1,columnspan=2)
+        self.checkIn=Checkbutton(master, text="Generate particles in this Wall?",variable=self.createPart,command=self.checkenable)
+        self.checkIn.grid(in_=Boundlabel,sticky=W,row=1,columnspan=3)
 
 
         # Setting Number of Particles
         
-        Label(master,text="Number of particles generated by time step :").grid(in_=Boundlabel,row=2 ,sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
+        Label(master,text="Number of particles generated by time step :").grid(in_=Boundlabel,row=2 ,columnspan=2,sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
         self.Nstring=StringVar()
         self.entryN=Entry(master,textvariable=self.Nstring,state='disabled')
         self.Nstring.set(0)
-        self.entryN.grid(in_=Boundlabel,row=2, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+        self.entryN.grid(in_=Boundlabel,row=2, column=2, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
         
         # Setting Temperature
         
-        Label(master,text="T [K] :").grid(in_=Boundlabel,row=3 ,sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
+        Label(master,text="T [K] :").grid(in_=Boundlabel,row=3 ,columnspan=2,sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
         self.Tstring=StringVar()
         self.entryT=Entry(master,textvariable=self.Tstring,state='disabled')
-        self.entryT.grid(in_=Boundlabel,row=3, column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
+        self.entryT.grid(in_=Boundlabel,row=3, column=2, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)
 
 
         
@@ -163,7 +194,7 @@ class App:
         # Setting Velocities
 
         VelocityLabel = ttk.Labelframe(Boundlabel, text='Velocities')
-        VelocityLabel.grid(sticky=E+W,row=4,padx=5, pady=5, ipadx=5, ipady=5,columnspan=2)
+        VelocityLabel.grid(sticky=E+W,row=4,padx=5, pady=5, ipadx=5, ipady=5,columnspan=3)
         
         
         Label(master,text="u [m/s] :").grid(in_=VelocityLabel,row=3, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
@@ -190,30 +221,62 @@ class App:
         # Wall Reflect or Pass
         
         self.WallReflect = IntVar()
-        Checkbutton(Boundlabel, text="Reflects?", variable=self.WallReflect).grid(row=5, sticky=W,columnspan=2)
+        Checkbutton(master, text="Reflects?", variable=self.WallReflect).grid(in_=Boundlabel,row=5, sticky=W,columnspan=3)
 
         # Save Wall
         
         self.save=Button(Boundlabel,text="Save Wall",command=self.saveWall)
         self.save.grid(row=6, columnspan=2, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
-        
-
-
+    
 
         ## Plot Configure
 
         ## Run
-        
+
         self.run=Button(master,text="Run",command=self.running)
-        self.run.grid(row=0, column=3, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
-        
-    def newWall(self):
-        
+        self.run.grid(row=0, column=4 , sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
+
+        ## Default White Theme
+        self.whiteTheme()
+
+    def whiteTheme(self):
+        self.color="white"
+        self.textcolor="black"
+        self.updateTheme()
+
+    def darkTheme(self):
+        self.color="#4E4B4B"
+        self.textcolor='white'
+        self.updateTheme()
+
+    def updateTheme(self):
+        self.master.configure(bg=self.color)
+        self.style.configure('TFrame',bg=self.color)
+        self.style.configure('TLabelframe', background=self.color)
+        self.style.configure('TLabelframe.Label', background=self.color,foreground=self.textcolor)
+        self.style.configure('TLabel', background=self.color,foreground=self.textcolor)
+        for wid in self.master.winfo_children()+self.CompositionLabel.winfo_children():
+            if type(wid)==Label  :
+                wid.configure(bg=self.color,foreground=self.textcolor)
+            elif type(wid)==Canvas or type(wid)==Checkbutton:
+                wid.configure(bg=self.color)
+
+    def newWall(self,event=None):
+        stri="wall/"+self.Boundvar.get()+".png"
+        self.ImgPath.set(stri)
+        photo=ImageTk.PhotoImage(Image.open(self.ImgPath.get()))
+        self.Imglabel.configure(image= photo)
+        self.Imglabel.image=photo
+
+        self.createPart.set(0)
+        self.checkenable()
         self.Nstring.set(0)
         self.Ustring.set(0)
         self.Vstring.set(0)
         self.Wstring.set(0)
         self.WallReflect.set(0)
+        for id, field in enumerate(self.elements):
+            self.stringComposition[id].set(0)
 
     def saveWall(self):
 
@@ -246,7 +309,7 @@ class App:
 
         self.save.config(bg='green')
                     
-    def checkCTI(self):
+    def checkCTI(self,event=None):
 
 
         for id, field in enumerate(self.elements):
@@ -258,6 +321,8 @@ class App:
             self.CTIfile="CTI Files\\sp21re.cti"
         elif (self.CTIvar.get()=="GRI Mech 3.0"):
             self.CTIfile="CTI Files\\GRI30.cti"
+        elif (self.CTIvar.get()=="Local file"):
+            self.CTIfile = filedialog.askopenfilename(title='Select file',filetypes = (("CTI files","*.cti"),("all files","*.*")))
 
         doc=open(self.CTIfile,'r')
         print(self.CTIfile, "was just imported")
@@ -291,6 +356,7 @@ class App:
         for i in range(0,6):
             self.Wall.append({'Nstring':'0','Tstring':'0','Ustring':'0','Vstring':'0','Wstring':'0','stringComposition':[0.0]*len(self.elements),'WallReflect':0})
         self.save.config(bg='red')
+        self.updateTheme()
 
     def onFrameConfigure(self, event):
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
@@ -345,14 +411,15 @@ class App:
         photo = PhotoImage(file=imagelist[0])
         width = photo.width()
         height = photo.height()
-        self.canvasload = Canvas(self.master,width=width, height=height)
-        self.canvasload.grid(row=1,column=3)
+        self.canvasload = Canvas(self.master,width=width, height=height,bg=self.color,bd=0,highlightthickness=0, relief='ridge')
+        self.canvasload.grid(row=1,column=4)
 
         self.giflist = []
         for imagefile in imagelist:
             photo = PhotoImage(file=imagefile)
             self.giflist.append(photo)
 
+        
         self.start_loading()
 
         self.Param=[self.Alphastring,self.Cwstring,self.D0string]
@@ -372,7 +439,7 @@ class App:
         elif self.MODELvar.get()=="Langevin Estendido":
         	Model=Simulate_LangeEst
 
-        Simulate(self.Wall,self.Param,self.DTstring,self.TFstring,Model)
+        Simulate(self.Wall,self.Param,self.DTstring,self.TFstring,Model,self.master)
 
         self.stop_loading()
 
@@ -381,11 +448,25 @@ class App:
         self.canvasload.delete(ALL)
         gif = self.giflist[n % len(self.giflist)]
         self.canvasload.create_image(gif.width()//2, gif.height()//2, image=gif)
-        timer_id = root.after(50, self.start_loading, n+1) # call this function every 100ms
+        self.canvasload.update()
+        timer_id=self.master.after(100,self.start_loading,n+1)
 
     def stop_loading(self):
         if timer_id:
-            root.after_cancel(timer_id)
+            self.master.after_cancel(timer_id)
+
+        imagelist=["done\\0.png","done\\1.png","done\\2.png","done\\3.png","done\\4.png","done\\5.png","done\\6.png","done\\7.png","done\\8.png"]    
+        
+        self.giflist = []
+        for imagefile in imagelist:
+            photo = PhotoImage(file=imagefile)
+            self.giflist.append(photo)
+        for gif in self.giflist:
+            self.canvasload.delete(ALL)
+            self.canvasload.create_image(gif.width()//2, gif.height()//2, image=gif)
+            self.canvasload.update()
+            self.master.update()
+            time.sleep(0.1) 
 
     def import_(self):
         filename = filedialog.askopenfilename(initialdir = "C:\\Users\\laura\\Desktop\\IC\\CHARMANDER\\beta\\OUTPUT",title='Select file',filetypes = (("CHARMANDER files","*.char"),("all files","*.*")))
@@ -429,15 +510,24 @@ class App:
 
         doc.close()
 
+    def checkMODEL(self,event=None):
+        self.entryCw.configure(state="disabled")
+        self.entryAlpha.configure(state="disabled")
+        self.entryD0.configure(state="disabled")
+        if self.MODELvar.get() == "IEM/LMSE":
+            self.entryCw.configure(state="normal")
+        elif self.MODELvar.get() == "Curl Modificado":
+            self.entryAlpha.configure(state="normal")
+        elif self.MODELvar.get() == "Langevin" or self.MODELvar.get() == "Langevin Estendido" :
+            self.entryD0.configure(state="normal")
+
     def help(self):
         subprocess.Popen(["manual.pdf"],shell=True)
-
 
 
 ###############################################################################
 ##                               CLASSE PARTÍCULA                            ##
 ###############################################################################
-
 
 class part():
 	def __init__(self,position,velocity,comp,T):
@@ -504,7 +594,6 @@ class part():
 	def updateTemp(self):
 	    self.T=(2000-560)*self.comp["H2O"]+560
 	    self.rho=287/self.P*self.T      #[Kg/m³]
-
 
 ###############################################################################
 ##                              FUNÇÕES DO PROGRAMA                          ##
@@ -598,7 +687,7 @@ def plot_PDF(data):
 ##                               FUNÇÃO SIMULAR                              ##
 ###############################################################################
 
-def Simulate(Wall,Param,DT,TF,Model):
+def Simulate(Wall,Param,DT,TF,Model,master):
 
         global frame_3D,frame_CDF,frame_comp,frame_PDF,filenames_3D,filenames_comp,filenames_CDF,filenames_PDF
         global t,dt,npart,part_u,C_omega,alpha,d0
@@ -626,6 +715,7 @@ def Simulate(Wall,Param,DT,TF,Model):
 
 
         for i_wall in range (0,len(Wall)):
+            master.update()
             npart=int(Wall[i_wall]["Nstring"])
             if npart>0:
                 for i in range(0,npart):
@@ -658,11 +748,11 @@ def Simulate(Wall,Param,DT,TF,Model):
                     elif i_wall==4:
                         x=rand
                         y=rand
-                        z=zero
+                        z=one
                     elif i_wall==5:
                         x=rand
                         y=rand
-                        z=one
+                        z=zero
 
                     GenPar.append([[x,y,z],[u,v,w],comp,T])
 
@@ -684,6 +774,8 @@ def Simulate(Wall,Param,DT,TF,Model):
           
           
         for t in np.linspace(0,t_f,int(t_f/dt)):
+
+            master.update()
 
           #Resetando os vetores e valores necessários
             x=[]
@@ -724,6 +816,7 @@ def Simulate(Wall,Param,DT,TF,Model):
                 plot_comp(z,p)
                 plot_PDF(p)
 
+            master.update()
           #Reação Química
             for id, part_i in enumerate(part_u):
                 for element in part_i.gas.species_names:
@@ -839,11 +932,11 @@ def Simulate_EIEM():
 ## Modelo de Curl
 
 def Simulate_Curl():
-    global part_u
+    global part_u,dt
 
     for id,part_i in enumerate(part_u):
         part_i.updateGamma(part_i.gas.viscosity)
-
+    N=len(part_u)*2*dt #Errado
     for i in range(1,int(len(part_u)/20)):
         part_i=part_u[i]
         part_j=part_u[-i]
@@ -851,6 +944,7 @@ def Simulate_Curl():
             name=part_i.gas.species_name(element)
             part_i.comp[name]=1/2*(part_i.comp[name]+part_j.comp[name]) + part_i.R_r*dt
             part_j.comp[name]=1/2*(part_i.comp[name]+part_j.comp[name]) + part_j.R_r*dt
+
 ## Modelo de Curl Modificado
 
 def Simulate_CurlM():
@@ -947,4 +1041,3 @@ root.iconbitmap('icon.ico')
 
 App(root)
 root.mainloop()
-root.destroy()
