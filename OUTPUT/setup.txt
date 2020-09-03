@@ -5,7 +5,7 @@
  
  N:20
  T:560
- U:150
+ U:200
  V:0
  W:0
  Wall Reflect:0
@@ -28,7 +28,7 @@ N2:0
  
  N:20
  T:2000
- U:-150
+ U:-200
  V:0
  W:0
  Wall Reflect:0

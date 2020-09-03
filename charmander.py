@@ -38,10 +38,10 @@ class App:
 
         ## Mixture Model
 
-        MODELlabel = ttk.Labelframe(master, text='Select the mixture model')
+        MODELlabel = ttk.Labelframe(master, text='Select the mixing model')
         self.MODELvar = StringVar()
         MODELcombo = ttk.Combobox(MODELlabel,state="readonly", textvariable=self.MODELvar ,values=["Curl","Curl Modificado","IEM/LMSE", "EIEM","Langevin","Langevin Estendido"])
-        
+        self.MODELvar.set("IEM/LMSE")
         MODELcombo.grid(pady=5, padx=10)
         MODELlabel.grid(row=0,column=1, sticky='W', padx=5, pady=5, ipadx=5, ipady=5)       
 
@@ -321,7 +321,22 @@ class App:
         self.start_loading()
         self.saveInput()
 
-        Simulate(self.Wall,self.DTstring,self.TFstring)
+
+
+        if self.MODELvar.get()=="Curl":
+            Model=Simulate_Curl
+        elif self.MODELvar.get()=="Curl Modificado":
+        	Model=Simulate_CurlM
+        elif self.MODELvar.get()=="IEM/LMSE":
+        	Model=Simulate_IEM
+        elif self.MODELvar.get()=="EIEM":
+        	Model=Simulate_EIEM
+        elif self.MODELvar.get()=="Langevin":
+        	Model=Simulate_Lange
+        elif self.MODELvar.get()=="Langevin Estendido":
+        	Model=Simulate_LangeEst
+
+        Simulate(self.Wall,self.DTstring,self.TFstring,Model)
 
         self.stop_loading()
 
@@ -496,7 +511,12 @@ def plot_PDF(data):
     plt.savefig(name)
     plt.close('all')
 
-def Simulate(Wall,DT,TF):
+
+###############################################################################
+##                               FUNÇÃO SIMULAR                              ##
+###############################################################################
+
+def Simulate(Wall,DT,TF,Model):
 
         global frame_3D,frame_CDF,frame_comp,frame_PDF,filenames_3D,filenames_comp,filenames_CDF,filenames_PDF,t,npart
 
@@ -514,46 +534,63 @@ def Simulate(Wall,DT,TF):
         dt=float(DT.get())          #Passo de Tempo
         t_f=float(TF.get())         #Tempo final
 
+        GenPar=[]
 
 
-        for i_wall in range (0,6):
+
+        for i_wall in range (0,len(Wall)):
             npart=int(Wall[i_wall]["Nstring"])
             if npart>0:
-                for dist in np.linspace(0,1,num=npart):
+                for i in range(0,npart):
                     u=float(Wall[i_wall]["Ustring"])
                     v=float(Wall[i_wall]["Vstring"])
                     w=float(Wall[i_wall]["Wstring"])
                     T=float(Wall[i_wall]["Tstring"])
-                    rand=random()
-                    if i_wall==0:
-                        x=0
-                        y=dist
-                        z=rand
-                    elif i_wall==1:
-                        x=1
-                        y=dist
-                        z=rand
-                    elif i_wall==2:
-                        x=dist
-                        y=0
-                        z=dist
-                    elif i_wall==3:
-                        x=dist
-                        y=1
-                        z=rand
-                    elif i_wall==4:
-                        x=dist
-                        y=rand
-                        z=0
-                    elif i_wall==5:
-                        x=dist
-                        y=rand
-                        z=1
                     comp={}
                     for id, element in enumerate(elementos):
                         comp[element]=float(Wall[i_wall]['stringComposition'][id])
+                    rand= lambda : random()
+                    one = lambda : 1
+                    zero= lambda : 0
+                    if i_wall==0:
+                        x=zero
+                        y=rand
+                        z=rand
+                    elif i_wall==1:
+                        x=one
+                        y=rand
+                        z=rand
+                    elif i_wall==2:
+                        x=rand
+                        y=zero
+                        z=rand
+                    elif i_wall==3:
+                        x=rand
+                        y=one
+                        z=rand
+                    elif i_wall==4:
+                        x=rand
+                        y=rand
+                        z=zero
+                    elif i_wall==5:
+                        x=rand
+                        y=rand
+                        z=one
 
-                    part_u.append(part([x,y,z],[u,v,w],comp,T))
+
+                    GenPar.append([[x,y,z],[u,v,w],comp,T])
+
+                for id, particle in enumerate(GenPar):
+                    inputt=particle
+                    inputt[0][0]=particle[0][0]()
+                    inputt[0][1]=particle[0][1]()
+                    inputt[0][2]=particle[0][2]()
+                    print("=======================================================================")
+                    print("Problema 1")
+                    print(inputt)
+                    print("=======================================================================")
+                    part_u.append(part(inputt[0],inputt[1],inputt[2],inputt[3]))
+
 
 
 
@@ -575,9 +612,6 @@ def Simulate(Wall,DT,TF):
             p=[]
             l=0
             V_avg=np.array([.0,.0,.0])
-            c_avg={}
-            for id, element in enumerate(elementos):
-                c_avg[element]=0
 
           #Excluindo particulas fora do volume de controle e movendo as outras
 
@@ -615,69 +649,19 @@ def Simulate(Wall,DT,TF):
                     part_i.R_r=PRE_EXP*R_p
 
           #Calculando a comp média
-            npart=len(part_u)
-            for id, part_i in enumerate(part_u):
-              for element in elementos:
-                c_avg[element]+=part_i.comp[element]
-                
-            for element in elementos:
-              c_avg[element] = c_avg[element]/npart
-
+            Model()
+            ## Gerando particulas novas
             
-            for id,part_i in enumerate(part_u):
-              for element in elementos:
-                #gama[element]=part_i.gas.mix_diff_coeffs[part_i.gas.species_index(element)]*part_i.gas.density
-                part_i.updateGamma(part_i.gas.viscosity)
-                part_i.omega[element] = C_omega*(part_i.gamma+part_i.gamma_t)/(delta**2)
-                
-            for id, part_i in enumerate(part_u):
-              for element in range(0,part_i.gas.n_species):
-                 name=part_i.gas.species_name(element)
-                 part_i.comp[name] += ( (part_i.omega[name] * (part_i.comp[name]-c_avg[name])) + part_i.R_r ) * dt
-                 if part_i.comp[name]>1:
-                   part_i.comp[name]=1
-                 part_i.updateTemp()
-
-
-            for i_wall in range (0,6):
-                npart=int(Wall[i_wall]["Nstring"])
-                if npart>0:
-                    for dist in np.linspace(0,1,num=npart):
-                        u=float(Wall[i_wall]["Ustring"])
-                        v=float(Wall[i_wall]["Vstring"])
-                        w=float(Wall[i_wall]["Wstring"])
-                        T=float(Wall[i_wall]["Tstring"])
-                        rand=random()
-                        if i_wall==0:
-                            x=0
-                            y=dist
-                            z=rand
-                        elif i_wall==1:
-                            x=1
-                            y=dist
-                            z=rand
-                        elif i_wall==2:
-                            x=dist
-                            y=0
-                            z=dist
-                        elif i_wall==3:
-                            x=dist
-                            y=1
-                            z=rand
-                        elif i_wall==4:
-                            x=dist
-                            y=rand
-                            z=0
-                        elif i_wall==5:
-                            x=dist
-                            y=rand
-                            z=1
-                        comp={}
-                        for id, element in enumerate(elementos):
-                            comp[element]=float(Wall[i_wall]['stringComposition'][id])
-
-                        part_u.append(part([x,y,z],[u,v,w],comp,T))
-
+            for id, particle in enumerate(GenPar):
+                print("=======================================================================")
+                print("Problema 2")
+                print(particle)
+                print("=======================================================================")
+                inputt=particle
+                inputt[0][0]=particle[0][0]()
+                inputt[0][1]=particle[0][1]()
+                inputt[0][2]=particle[0][2]()
+                part_u.append(part(inputt[0],inputt[1],inputt[2],inputt[3]))
          
 
         ###############################################################################
@@ -712,6 +696,183 @@ def Simulate(Wall,DT,TF):
                 writer.append_data(image)
                 remove(filename)
 
+###############################################################################
+##                          MODELOS DE MICROMISTURA                          ##
+###############################################################################
+
+## Interaction by Exchange with the Mean / Linear Square Mean Estimation 
+
+def Simulate_IEM():
+        global part_u
+        c_avg={}
+        for id, element in enumerate(elementos):
+            c_avg[element]=0
+        npart=len(part_u)
+        for id, part_i in enumerate(part_u):
+          for element in elementos:
+            c_avg[element]+=part_i.comp[element]
+                
+        for element in elementos:
+          c_avg[element] = c_avg[element]/npart
+
+            
+        for id,part_i in enumerate(part_u):
+            for element in elementos:
+                part_i.updateGamma(part_i.gas.viscosity)
+                part_i.omega[element] = C_omega*(part_i.gamma+part_i.gamma_t)/(delta**2)
+                
+        for id, part_i in enumerate(part_u):
+            for element in range(0,part_i.gas.n_species):
+                name=part_i.gas.species_name(element)
+                part_i.comp[name] += ( (part_i.omega[name] * (part_i.comp[name]-c_avg[name])) + part_i.R_r ) * dt
+                if part_i.comp[name]>1:
+                    part_i.comp[name]=1
+                part_i.updateTemp()
+
+## Extended Interaction by Exchange with the Mean 
+
+def Simulate_EIEM():
+        global part_u
+        c_avg={}
+        for id, element in enumerate(elementos):
+            c_avg[element]=0
+        npart=len(part_u)
+        for id, part_i in enumerate(part_u):
+          for element in elementos:
+            c_avg[element]+=part_i.comp[element]
+                
+        for element in elementos:
+          c_avg[element] = c_avg[element]/npart
+
+            
+        for id,part_i in enumerate(part_u):
+            for element in elementos:
+                part_i.updateGamma(part_i.gas.viscosity)
+                part_i.omega[element] = C_omega*(part_i.gamma+part_i.gamma_t)/(delta**2)
+                
+        for id, part_i in enumerate(part_u):
+            for element in range(0,part_i.gas.n_species):
+                name=part_i.gas.species_name(element)
+                part_i.comp[name] += ( (part_i.omega[name] * (part_i.comp[name]-c_avg[name])) + part_i.R_r ) * dt
+                if part_i.comp[name]>1:
+                    part_i.comp[name]=1
+                part_i.updateTemp()
+
+## Modelo de Curl
+
+def Simulate_Curl():
+        global part_u
+        c_avg={}
+        for id, element in enumerate(elementos):
+            c_avg[element]=0
+        npart=len(part_u)
+        for id, part_i in enumerate(part_u):
+          for element in elementos:
+            c_avg[element]+=part_i.comp[element]
+                
+        for element in elementos:
+          c_avg[element] = c_avg[element]/npart
+
+            
+        for id,part_i in enumerate(part_u):
+            for element in elementos:
+                part_i.updateGamma(part_i.gas.viscosity)
+                part_i.omega[element] = C_omega*(part_i.gamma+part_i.gamma_t)/(delta**2)
+                
+        for id, part_i in enumerate(part_u):
+            for element in range(0,part_i.gas.n_species):
+                name=part_i.gas.species_name(element)
+                part_i.comp[name] += ( (part_i.omega[name] * (part_i.comp[name]-c_avg[name])) + part_i.R_r ) * dt
+                if part_i.comp[name]>1:
+                    part_i.comp[name]=1
+                part_i.updateTemp()
+
+## Modelo de Curl Modificado
+
+def Simulate_CurlM():
+        global part_u
+        c_avg={}
+        for id, element in enumerate(elementos):
+            c_avg[element]=0
+        npart=len(part_u)
+        for id, part_i in enumerate(part_u):
+          for element in elementos:
+            c_avg[element]+=part_i.comp[element]
+                
+        for element in elementos:
+          c_avg[element] = c_avg[element]/npart
+
+            
+        for id,part_i in enumerate(part_u):
+            for element in elementos:
+                part_i.updateGamma(part_i.gas.viscosity)
+                part_i.omega[element] = C_omega*(part_i.gamma+part_i.gamma_t)/(delta**2)
+                
+        for id, part_i in enumerate(part_u):
+            for element in range(0,part_i.gas.n_species):
+                name=part_i.gas.species_name(element)
+                part_i.comp[name] += ( (part_i.omega[name] * (part_i.comp[name]-c_avg[name])) + part_i.R_r ) * dt
+                if part_i.comp[name]>1:
+                    part_i.comp[name]=1
+                part_i.updateTemp()
+
+## Modelo de Langevin 
+
+def Simulate_Lange():
+        global part_u
+        c_avg={}
+        for id, element in enumerate(elementos):
+            c_avg[element]=0
+        npart=len(part_u)
+        for id, part_i in enumerate(part_u):
+          for element in elementos:
+            c_avg[element]+=part_i.comp[element]
+                
+        for element in elementos:
+          c_avg[element] = c_avg[element]/npart
+
+            
+        for id,part_i in enumerate(part_u):
+            for element in elementos:
+                part_i.updateGamma(part_i.gas.viscosity)
+                part_i.omega[element] = C_omega*(part_i.gamma+part_i.gamma_t)/(delta**2)
+                
+        for id, part_i in enumerate(part_u):
+            for element in range(0,part_i.gas.n_species):
+                name=part_i.gas.species_name(element)
+                part_i.comp[name] += ( (part_i.omega[name] * (part_i.comp[name]-c_avg[name])) + part_i.R_r ) * dt
+                if part_i.comp[name]>1:
+                    part_i.comp[name]=1
+                part_i.updateTemp()
+
+## Modelo de Langevin extendido
+
+def Simulate_LangeEst():
+        global part_u
+        c_avg={}
+        for id, element in enumerate(elementos):
+            c_avg[element]=0
+        npart=len(part_u)
+        for id, part_i in enumerate(part_u):
+          for element in elementos:
+            c_avg[element]+=part_i.comp[element]
+                
+        for element in elementos:
+          c_avg[element] = c_avg[element]/npart
+
+            
+        for id,part_i in enumerate(part_u):
+            for element in elementos:
+                part_i.updateGamma(part_i.gas.viscosity)
+                part_i.omega[element] = C_omega*(part_i.gamma+part_i.gamma_t)/(delta**2)
+                
+        for id, part_i in enumerate(part_u):
+            for element in range(0,part_i.gas.n_species):
+                name=part_i.gas.species_name(element)
+                part_i.comp[name] += ( (part_i.omega[name] * (part_i.comp[name]-c_avg[name])) + part_i.R_r ) * dt
+                if part_i.comp[name]>1:
+                    part_i.comp[name]=1
+                part_i.updateTemp()
 
 ###############################################################################
 ##                     DEFININDO CONSTANTES E PARÂMETROS                     ##
