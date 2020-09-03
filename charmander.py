@@ -13,6 +13,12 @@ from numpy.random import random
 from random import randint
 from math import exp
 
+
+###############################################################################
+##                         CLASSE INTERFACE GRÁFICA                          ##
+###############################################################################
+
+
 class App:
     def __init__(self,master):
 
@@ -140,7 +146,6 @@ class App:
         self.run=Button(master,text="Run",command=self.running)
         self.run.grid(row=0, column=3, sticky='W', padx=5, pady=5, ipadx=5, ipady=5) 
         
-
     def newWall(self):
         
         self.Nstring.set(0)
@@ -168,8 +173,7 @@ class App:
 
 
         self.save.config(bg='green')
-        
-            
+                    
     def checkCTI(self):
 
 
@@ -213,10 +217,6 @@ class App:
             self.Wall.append({'Nstring':'0','Tstring':'0','Ustring':'0','Vstring':'0','Wstring':'0','stringComposition':[0]*len(self.elements),'WallReflect':0})
         self.save.config(bg='red')
 
-
-        
-
-
     def onFrameConfigure(self, event):
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
@@ -240,7 +240,6 @@ class App:
             for id, field in enumerate(self.elements):
                 self.entryComposition[id].configure(state='normal')
 
-
     def saveInput(self):
 
         print("The conditions set are available in the file setup.txt in the folder OUTPUT")
@@ -261,11 +260,10 @@ class App:
 
         setup.close()
 
-
-
     def running(self):
+
+        timer_id = None
         imagelist=["loading\\frame_00.gif","loading\\frame_01.gif","loading\\frame_02.gif","loading\\frame_03.gif","loading\\frame_04.gif","loading\\frame_05.gif","loading\\frame_06.gif","loading\\frame_07.gif","loading\\frame_08.gif","loading\\frame_09.gif"]    
-    
         photo = PhotoImage(file=imagelist[0])
         width = photo.width()
         height = photo.height()
@@ -315,7 +313,6 @@ class App:
         C_omega=-2                                   #Constante arbitrária
 
         for i_wall in range (0,6):
-            print(self.Wall[i_wall]["Nstring"])
             npart=int(self.Wall[i_wall]["Nstring"])
             if npart>0:
                 for dist in np.linspace(0,1,num=20):
@@ -352,10 +349,67 @@ class App:
                             instant.z=1
                         for id, element in enumerate(elementos):
                             instant.comp[elementos[id]]=double(self.Wall[i]['stringComposition'][id])
-        self.stop_loading()
 
-        # species=part_u[0].gas.species_names
-        # V_avg=np.zeros(3)
+
+
+        V_avg=np.zeros(3)
+
+        ###############################################################################
+        ##                          INÍCIO DO LOOP                                   ##
+        ###############################################################################
+          
+          
+        for t in np.linspace(0,t_f,int(t_f/dt)):
+
+          #Resetando os vetores e valores necessários
+            resetLoop()
+
+          #Excluindo particulas fora do volume de controle e movendo as outras
+            updatePosition()
+
+          #Criando vetores de X, Y, Z e comp para plotagem
+            updateImage() 
+
+          #Reação Química
+            reactNow()
+
+          #Calculando a comp média
+            updateComposition()
+         
+
+        ###############################################################################
+        ##                          GERAÇÃO DOS GIFS                                 ##
+        ###############################################################################
+            
+        images=[]
+        with imageio.get_writer('OUTPUT/3D.gif', mode='I') as writer:
+           for filename in filenames_3D:
+             image = imageio.imread(filename)
+             writer.append_data(image)
+             remove(filename)
+
+        images=[]
+        with imageio.get_writer('OUTPUT/compositon.gif', mode='I') as writer:
+            for filename in filenames_comp:
+                image = imageio.imread(filename)
+                writer.append_data(image)
+                remove(filename)
+
+        images=[]
+        with imageio.get_writer('OUTPUT/PDF.gif', mode='I') as writer:
+            for filename in filenames_PDF:
+                image = imageio.imread(filename)
+                writer.append_data(image)
+                remove(filename)
+
+        images=[]
+        with imageio.get_writer('OUTPUT/CDF.gif', mode='I') as writer:
+           for filename in filenames_CDF:
+                image = imageio.imread(filename)
+                writer.append_data(image)
+                remove(filename)
+
+        self.stop_loading()
 
     def start_loading(self,n=0):
         global timer_id
@@ -368,10 +422,12 @@ class App:
         if timer_id:
             root.after_cancel(timer_id)
 
-timer_id = None
+
 ###############################################################################
 ##                               CLASSE PARTÍCULA                            ##
 ###############################################################################
+
+
 class part():
   def __init__(self):
     global elementos
@@ -426,16 +482,17 @@ class part():
     self.T=(2000-560)*self.comp["H2O"]+560
     self.rho=287/self.P*self.T      #[Kg/m³]
 
+
 ###############################################################################
 ##                              FUNÇÕES DO PROGRAMA                          ##
 ###############################################################################
+
 
 def random_float(min,max):
   result=0
   while result >=max or result<=min:
     result=random()*(max-min)+min
   return result
-
 
 def plot_3D(x,y,z,c):
     global frame_3D,filenames_3D
@@ -513,7 +570,6 @@ def plot_PDF(data):
     plt.savefig(name)
     plt.close('all')
 
-
 def resetLoop():
     global x,y,z,h,o,l,c_avg,p
     x=[]
@@ -586,10 +642,6 @@ def reactNow():
           R_p=( 1.0 - part_i.comp[element] ) * exp( - (beta * ( 1.0 - part_i.comp[element] ) ) / ( 1.0 - alpha * ( 1.0 - part_i.comp[element] ) ) )
           part_i.R_r=PRE_EXP*R_p
           
-
-
-
-
 
 ###############################################################################
 ##                       ÍNICIO DA INTERFACE GRÁFICA                         ##

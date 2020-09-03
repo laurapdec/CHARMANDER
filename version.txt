@@ -1,7 +1,0 @@
-07/01/2020
-
-In this version of CHARMANDER® was added the 'Save Wall' button in order to save the definitions for each wall once it's completed. 
-Besides that the software now saves the input configurations in the file 'OUTPUT\setup.txt' for later considerations.
-
-
-Laura Pereira de Castro
