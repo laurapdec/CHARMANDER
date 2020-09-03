@@ -2,12 +2,12 @@
  
  Wall 1 
  
-
- N:
- T:
- U:
- V:
- W:
+ 
+ N:0
+ T:0
+ U:0
+ V:0
+ W:0
  Wall Reflect:0
  Composition: 
 H2:0
@@ -25,12 +25,12 @@ N2:0
  
  Wall 2 
  
-
- N:
- T:
- U:
- V:
- W:
+ 
+ N:0
+ T:0
+ U:0
+ V:0
+ W:0
  Wall Reflect:0
  Composition: 
 H2:0
@@ -48,12 +48,12 @@ N2:0
  
  Wall 3 
  
-
- N:
- T:
- U:
- V:
- W:
+ 
+ N:0
+ T:0
+ U:0
+ V:0
+ W:0
  Wall Reflect:0
  Composition: 
 H2:0
@@ -72,11 +72,11 @@ N2:0
  Wall 4 
  
  
- N:
- T:
- U:
- V:
- W:
+ N:0
+ T:0
+ U:0
+ V:0
+ W:0
  Wall Reflect:0
  Composition: 
 H2:0
@@ -94,12 +94,12 @@ N2:0
  
  Wall 5 
  
-
- N:
- T:
- U:
- V:
- W:
+ 
+ N:0
+ T:0
+ U:0
+ V:0
+ W:0
  Wall Reflect:0
  Composition: 
 H2:0
@@ -118,11 +118,11 @@ N2:0
  Wall 6 
  
  
- N:
- T:
- U:
- V:
- W:
+ N:0
+ T:0
+ U:0
+ V:0
+ W:0
  Wall Reflect:0
  Composition: 
 H2:0
