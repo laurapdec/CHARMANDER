@@ -477,9 +477,6 @@ class App:
 		setup.write(self.MODELvar.get()+ "\n")																																					# Escreve no arquivo o modelo de micromistura
 		setup.write(self.Param[0].get()+" "+self.Param[1].get()+" "+self.Param[2].get()+ "\n")																									# Escreve no arquivo os parametros do modelo de micromistura
 		setup.write(self.DTstring.get()+" "+self.TFstring.get()+ "\n")																															# Escreve no arquivo os parametros de tempo
-		for element in self.PlotConfiguration: 
-			setup.write( element.get()+ " ")		
-		setup.write("\n")
 
 		for i in range(0,9):																																									# Para todas superficies de contorno
 			name="\n \n Wall " +str(i+1)+ " \n \n "																																				
@@ -530,10 +527,10 @@ class App:
 		elif self.MODELvar.get()=="Langevin Estendido":
 			Model=Simulate_LangeEst
 
-		#if self.Burnvar.get()=="Cantera":																																						# Verifica o modelo de combustao e associa a funcao com ele
-		React=BurnCantera
-	#	elif self.Burnvar.get()=="Don't burn":
-	#		React=DontBurn
+		if self.Burnvar.get()=="Cantera":																																						# Verifica o modelo de combustao e associa a funcao com ele
+			React=BurnCantera
+		elif self.Burnvar.get()=="Don't burn":
+			React=DontBurn
 
 		PlotConfigurationsent=[]																																								# Cria vetor vazio
 		for i in range(0,len(self.PlotConfiguration)):
@@ -556,11 +553,11 @@ class App:
 		elif platform.system()=='Windows':																																						# Se for Windows ...  mesma coisa apenas inverte as barras
 			imagelist=["done\\0.png","done\\1.png","done\\2.png","done\\3.png","done\\4.png","done\\5.png","done\\6.png","done\\7.png","done\\8.png"]    
 		
-		self.giflist = []
-		for imagefile in imagelist:
+		self.giflist = []																																										# Criacao do vetor das imagens vazio
+		for imagefile in imagelist:																																								# Adiciona-se as imagens
 			photo = PhotoImage(file=imagefile)
 			self.giflist.append(photo)
-		for gif in self.giflist:
+		for gif in self.giflist:																																								# Apresentacao do gif
 			try:
 				self.prompt.delete(last)
 			except:
@@ -570,16 +567,14 @@ class App:
 			self.master.update()
 			time.sleep(0.1) 
 		time.sleep(1)
-		self.promptPrint("Finished.")
+		self.promptPrint("Finished.")																																							# Imprime no LOG Console 'Finished.'
 		self.promptPrint("=======================================")
 		self.prompt.delete(last)
 
-	def import_(self):
-		filename = filedialog.askopenfilename(initialdir = "/OUTPUT",title='Select file',filetypes = (("CHARMANDER files","*.char"),("all files","*.*")))
-		doc=open(filename,'r')
-
-		self.promptPrint("The conditions set in the file " + doc.name+ " are now being used")
-
+	def import_(self):																																										## Funcao para importar condicoes de contorno
+		filename = filedialog.askopenfilename(initialdir = "/OUTPUT",title='Select file',filetypes = (("CHARMANDER files","*.char"),("all files","*.*")))										# Abre janela para selecionar arquivo
+		doc=open(filename,'r') 																																									# Abre arquivo
+		self.promptPrint("The conditions set in the file " + doc.name+ " are now being used") 																									# Imprimir no LOG Console que as condicoes de contorno foram importadas
 
 		self.CTIfile=doc.readline().strip('\n')
 		if platform.system()=='Linux':		
@@ -635,10 +630,6 @@ class App:
 		self.DTstring.set(TimeParam[0])
 		self.TFstring.set(TimeParam[1])
 
-		entryComposition=doc.readline().strip('\n').split(' ')	
-		for i in range(0,len(elementos)):
-			self.PlotConfiguration[i].set(entryComposition[i])
-
 		for f in range(0,9):
 			doc.readline()
 			doc.readline()
@@ -658,110 +649,106 @@ class App:
 				self.Wall[i-1]['stringComposition'][id]=float(a[a.find(':')+1:].strip('\n'))
 
 		doc.close()
-		self.saved=True
+		self.saved=True 																			
 
-	def checkMODEL(self,event=None):
-		self.entryCw.configure(state="disabled")
-		self.entryAlpha.configure(state="disabled")
-		self.entryD0.configure(state="disabled")
-		if self.MODELvar.get() == "IEM/LMSE":
+	def checkMODEL(self,event=None):																																						## Funcao para checar o modelo de micromistura
+		self.entryCw.configure(state="disabled") 																																				#Desabilita Cw
+		self.entryAlpha.configure(state="disabled") 																																			#Desabilita alpha
+		self.entryD0.configure(state="disabled") 																																				#Desabilita D0
+		if self.MODELvar.get() == "IEM/LMSE": 																																					#Se for modelo IEM/LMSE habilita apenas Cw
 			self.entryCw.configure(state="normal")
-		elif self.MODELvar.get() == "Curl Modificado":
+		elif self.MODELvar.get() == "Curl Modificado": 																																			#Se for modelo Curl Modificado habilita apenas alpha
 			self.entryAlpha.configure(state="normal")
-		elif self.MODELvar.get() == "Langevin" or self.MODELvar.get() == "Langevin Estendido" :
+		elif self.MODELvar.get() == "Langevin" or self.MODELvar.get() == "Langevin Estendido" : 																								#Se for modelo de Langevin habilita apenas D0
 			self.entryD0.configure(state="normal")
 
-	def help(self):
-		subprocess.Popen(["manual.pdf"],shell=True)
+	def help(self):																																											## Funcao para abrir o
+		subprocess.Popen(["manual.pdf"],shell=True)																																														
 
 ###############################################################################
 ##                               CLASSE PARTICULA                            ##
 ###############################################################################
 
-class part():
+class part():																																													## Classe 'part' para criar cada particula
 	def __init__(self,position,velocity,comp,T):
 		global elementos
-		[x,y,z]=position 
-		[u,v,w]=velocity
-		self.x=x
-		self.y=y
-		self.z=z
+		[x,y,z]=position 																																											# Le a posicao x, y e z da particula
+		[u,v,w]=velocity 																																											# Le a velocidade u, v e w 
+		self.x=x 																																													# Salva a posicao x
+		self.y=y																																													# Salva a posicao y
+		self.z=z																																													# Salva a posicao z
 
-		self.u=u
-		self.v=v
-		self.w=w
+		self.u=u																																													# Salva a velocidade x
+		self.v=v																																													# Salva a velocidade y
+		self.w=w																																													# Salva a velocidade z
 
-		self.comp=comp
+		self.comp=comp 																																												# Le e salva a composicao
 
+		self.old_position=np.array([100,100,100]) 																																					# Define como posicao anterior [100,100,100]
 
-		self.old_position=np.array([100,100,100])
+		self.gamma=0.01 																																											# Define o gamma como 0.01
+		self.gamma_old=0.01																																											# Define o gamma anterior como 0.001
+		self.gamma_t=0.0																																											# Define o gamma turbulento como 0.0
+		self.gamma_t_old=0.0																																										# Define o gamma turbulento anterior como 0.0
 
-		self.gamma=0.01
-		self.gamma_old=0.01
-		self.gamma_t=0.0
-		self.gamma_t_old=0.0
+		self.T=  1200.																																												# [K] Temperatura	
+		self.P=101325       																																										# [Pa] Pressao
+		self.rho=287/self.P*self.T      																																							# [Kg/m^3] Densidade pela lei dos gases perfeitos
 
-		self.T=  1200.
-		self.P=101325       #[Pa]
-		self.rho=287/self.P*self.T      #[Kg/m^3]
+		self.R_r=0																																													# R_rEXPLAIN
 
-		self.R_r=0
+		omega_te=C_omega*(self.gamma+self.gamma_t)/(delta**2) 																																		# Calculo do omega 
+		self.omega={}																																												# Dicionario vazio
+		for id, element in enumerate(elementos): 																																					# Para todos elementos
+			self.omega[elementos[id]]=omega_te 																																						# Adicionar um omega correspondente no dicionario
 
-		omega_te=C_omega*(self.gamma+self.gamma_t)/(delta**2)
-		self.omega={}
-		for id, element in enumerate(elementos):
-			self.omega[elementos[id]]=omega_te
+		self.gas=ct.Solution(ap.solution_input[0],ap.solution_input[1]) 																															# Cria uma solucao do cantera dentro de cada particula
 
-		self.gas=ct.Solution(ap.solution_input[0],ap.solution_input[1])
+		self.gas.TPX=self.T,self.P,self.comp 																																						# Atualiza a temperatura, pressao e composicao do cantera
 
-		self.gas.TPX=self.T,self.P,self.comp
-#		self.Xco=self.comp["CH4"]	
-
-
-	def getPosition(self):
+	def getPosition(self): 																																										## Funcao que retorna vetor das posicoes da particula
 		return np.array([self.x,self.y,self.z])
 
-	def getOlderPosition(self):
+	def getOlderPosition(self):																																									## Funcao que retorna vetor das posicoes antigas da particula
 		return self.old_position
 
-	def getVelocity(self):
+	def getVelocity(self):																																										## Funcao que retorna vetor das velocidades da particula
 		return np.array([self.u,self.v,self.w])
 
-	def setPosition(self,pos):
+	def setPosition(self,pos):																																									## Funcao que define vetor das posicoes da particula
 		self.old_position=np.array([self.x,self.y,self.z])
 		self.x=pos[0]
 		self.y=pos[1]
 		self.z=pos[2]
 
-	def setVelocity(self,vel):
+	def setVelocity(self,vel):																																									## Funcao que define vetor das velocidades da particula
 		self.u=vel[0]
 		self.v=vel[1]
 		self.w=vel[2]
 
-	def updateGamma(self,new):
+	def updateGamma(self,new):																																									## Funcao que atualiza o gamma
 		self.gamma_old=self.gamma
 		self.gamma=new
 
-	def updateXT(self):
+	def updateXT(self):																																											## Funcao que atualiza a temperatura e a composicao
 		#c=1-self.comp["CH4"]/self.Xco
 		#print(self.Xco)
 		#self.T= c * (Tb-Tu) + Tu
 		#self.T=1200.
-		self.P=self.gas.P
-		self.T=self.gas.T
-		self.gas.TPX=self.T,self.P,self.comp
+		self.P=self.gas.P 					
+		self.gas.TPX=self.T,self.P,self.comp 
 
 ###############################################################################
 ##                              FUNCOES DO PROGRAMA                          ##
 ###############################################################################
 
-def random_float(min,max):
+def random_float(min,max): 																																										## Funcao para gerar uma variavel float aleatoria entre min e max
 	result=0
 	while result >=max or result<=min:
 		result=random()*(max-min)+min
 	return result
 
-def plot_3D(x,y,z,data,plot):
+def plot_3D(x,y,z,data,plot):																																									## Funcao para plotar o grafico 3D com uma composicao predefinida (NAO ESTA EM USO) 
 	global frame_3D,filenames_3D
 	c=data[0]
 	fig=plt.figure()
@@ -784,7 +771,7 @@ def plot_3D(x,y,z,data,plot):
 	plt.savefig(name)
 	plt.close('all')
 
-def plot_T(x,y,z,T):
+def plot_T(x,y,z,T):																																											## Funcao para plotar o grafico 3D com a temperatura
 	global frame_T,filenames_T
 	fig=plt.figure()
 	ax = fig.add_subplot(1,1,1, projection='3d')
@@ -804,7 +791,7 @@ def plot_T(x,y,z,T):
 	plt.savefig(name)
 	plt.close('all')
 
-def plot_PDF(data_t,plot): 
+def plot_PDF(data_t,plot): 																																										## Funcao para plotar o grafico da PDF e da CDF
 	global frame_PDF,filenames_PDF,frame_CDF,filenames_CDF
 	p_t=[]
 	pp_t=[]
@@ -826,8 +813,7 @@ def plot_PDF(data_t,plot):
 		plt.plot(x, p, 'o-')
 	plt.axis([-0.1,1.1,0,len(p)])
 	plt.grid()
-	plt.ylabel('Cumulative Distribution Function')
-	plt.xlabel('Y_N')
+	plt.ylabel('[]')
 	plt.legend(plot)
 	frame_CDF[0]+=1
 	frame_CDF[1]=t
@@ -840,8 +826,8 @@ def plot_PDF(data_t,plot):
 		plt.plot(x, pp, '.-')
 
 	plt.axis([-0.1,1.1,0,100])
-	plt.ylabel('Probability Density Function')
-	plt.xlabel('Y_N')
+	plt.ylabel('Probabilidade de [] %')
+	plt.xlabel('[]')
 	plt.legend(plot)
 	plt.grid()
 	#plt.legend(["$H_2$","$H_2O$","$O_2$"])
@@ -851,7 +837,6 @@ def plot_PDF(data_t,plot):
 	filenames_PDF.append(name)
 	plt.savefig(name)
 	plt.close('all')
-
 
 ###############################################################################
 ##                               FUNCAO SIMULAR                              ##
@@ -909,10 +894,10 @@ def Simulate(Wall,Param,DT,TF,Model,React,PlotConfiguration):
 	## Reading Boundary Conditions in Wall
 
 	for i_wall in range (0,len(Wall)):
+		
 		npart=int(Wall[i_wall]["Nstring"])
 		if npart>0:
 			for i in range(0,npart):
-				print(i)
 				u=float(Wall[i_wall]["Ustring"])
 				v=float(Wall[i_wall]["Vstring"])
 				w=float(Wall[i_wall]["Wstring"])
@@ -1032,7 +1017,7 @@ def Simulate(Wall,Param,DT,TF,Model,React,PlotConfiguration):
 				for id,element in enumerate(plot):
 					p[id].append(part_i.comp[element])
 			#Plotando e salvando imagens
-			plot_3D(x,y,z,p,plot)
+#			plot_3D(x,y,z,p,plot)
 			plot_T(x,y,z,T)
 			plot_PDF(p,plot)
 
@@ -1069,14 +1054,14 @@ def Simulate(Wall,Param,DT,TF,Model,React,PlotConfiguration):
 		for filename in filenames_PDF:
 			image = imageio.imread(filename)
 			writer.append_data(image)
-			#remove(filename)
+			remove(filename)
 
 	images=[]
 	with imageio.get_writer('OUTPUT/CDF.gif', mode='I') as writer:
 		for filename in filenames_CDF:
 			image = imageio.imread(filename)
 			writer.append_data(image)
-			#remove(filename)
+			remove(filename)
 
 
 ###############################################################################
@@ -1086,7 +1071,7 @@ def Simulate(Wall,Param,DT,TF,Model,React,PlotConfiguration):
 def BurnCantera():
 	global part_u
 	for id, part_i in enumerate(part_u):
-		part_i.R_r=part_i.gas.net_production_rates*1000
+		part_i.R_r=part_i.gas.net_production_rates#*1000
 
 def DontBurn():
 	global part_u
@@ -1278,7 +1263,7 @@ try:   	#Windows
 except: #Linux
 	root.attributes('-zoomed',True) #Fullscreen
 	root.iconbitmap('@icon.xbm')	#Icon
-
 #Inicio da Interface Grafica
+
 ap=App(root)
 root.mainloop()
