@@ -532,8 +532,8 @@ class App:
 
 		#if self.Burnvar.get()=="Cantera":																																						# Verifica o modelo de combustao e associa a funcao com ele
 		React=BurnCantera
-	#	elif self.Burnvar.get()=="Don't burn":
-	#		React=DontBurn
+		#elif self.Burnvar.get()=="Don't burn":
+		#React=DontBurn
 
 		PlotConfigurationsent=[]																																								# Cria vetor vazio
 		for i in range(0,len(self.PlotConfiguration)):
@@ -715,8 +715,6 @@ class part():
 		self.gas=ct.Solution(ap.solution_input[0],ap.solution_input[1])
 
 		self.gas.TPX=self.T,self.P,self.comp
-#		self.Xco=self.comp["CH4"]	
-
 
 	def getPosition(self):
 		return np.array([self.x,self.y,self.z])
@@ -851,7 +849,6 @@ def plot_PDF(data_t,plot):
 	filenames_PDF.append(name)
 	plt.savefig(name)
 	plt.close('all')
-
 
 ###############################################################################
 ##                               FUNCAO SIMULAR                              ##
@@ -1062,22 +1059,23 @@ def Simulate(Wall,Param,DT,TF,Model,React,PlotConfiguration):
 		for filename in filenames_3D:
 			image = imageio.imread(filename)
 			writer.append_data(image)
-			remove(filename)
 
 	images=[]
 	with imageio.get_writer('OUTPUT/PDF.gif', mode='I') as writer:
 		for filename in filenames_PDF:
 			image = imageio.imread(filename)
 			writer.append_data(image)
-			#remove(filename)
 
 	images=[]
 	with imageio.get_writer('OUTPUT/CDF.gif', mode='I') as writer:
 		for filename in filenames_CDF:
 			image = imageio.imread(filename)
 			writer.append_data(image)
-			#remove(filename)
 
+	if messagebox.askyesno("Warning", "Wish to delete the pictures and keep just the GIF?"):																												# Caixa de aviso com o texto '"Warning, Wish to save unsaved surface?' 
+		for filename in filenames_PDF+filenames_CDF+filenames_3D: 
+			remove(filename) 
+ 
 
 ###############################################################################
 ##                           MODELOS DE COMBUSTAO                            ##
