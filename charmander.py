@@ -285,7 +285,7 @@ class App:
 
 	def newWall(self,event=None): 																																							## Funcao para resetar os parametros das superficies de contorno
 		if not self.saved :																																										# Se a superficie anteior nao foi salva aind
-			if messagebox.askokcancel("Warning", "Wish to save unsaved surface?"):																												# Caixa de aviso com o texto '"Warning, Wish to save unsaved surface?'
+			if messagebox.askyesno("Warning", "Wish to save unsaved surface?"):																												# Caixa de aviso com o texto '"Warning, Wish to save unsaved surface?'
 				self.saveWall()																																									# Se confirmado a superficie anterior é salva
 
 		self.saved=False																																										# Define que a nova superficie ainda nao foi salva
@@ -505,7 +505,7 @@ class App:
 	def running(self):																																										## Funcao para rodar a simulacao
 		self.run.config(state='disabled')																																						# Confere se o usuario realmente deseja comecar a simulacao sem salvar a ultima superficie de controle
 		if not self.saved :
-			if messagebox.askokcancel("Warning", "Wish to save unsaved wall?"):
+			if messagebox.askyesno("Warning", "Wish to save unsaved wall?"):
 				self.saveWall()
 			else:
 				self.run.config(state='normal')
@@ -629,6 +629,10 @@ class App:
 		TimeParam=doc.readline().strip('\n').split(' ')
 		self.DTstring.set(TimeParam[0])
 		self.TFstring.set(TimeParam[1])
+
+		entryComposition=doc.readline().strip('\n').split(' ')	
+		for i in range(0,len(elementos)):
+			self.PlotConfiguration[i].set(entryComposition[i])
 
 		for f in range(0,9):
 			doc.readline()
@@ -1061,6 +1065,10 @@ def Simulate(Wall,Param,DT,TF,Model,React,PlotConfiguration):
 		for filename in filenames_CDF:
 			image = imageio.imread(filename)
 			writer.append_data(image)
+			remove(filename)
+
+	if messagebox.askyesno("Warning", "Wish to delete the pictures and keep just the GIF?"):																												# Caixa de aviso com o texto '"Warning, Wish to save unsaved surface?'
+		for filename in filenames_PDF+filenames_CDF+filenames_3D:
 			remove(filename)
 
 
